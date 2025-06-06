@@ -9,7 +9,213 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      events: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          current_participants: number | null
+          description: string | null
+          event_date: string
+          id: string
+          image_url: string | null
+          max_participants: number | null
+          organizer_id: string
+          registration_deadline: string
+          requirements: string | null
+          status: Database["public"]["Enums"]["event_status"] | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          venue: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          current_participants?: number | null
+          description?: string | null
+          event_date: string
+          id?: string
+          image_url?: string | null
+          max_participants?: number | null
+          organizer_id: string
+          registration_deadline: string
+          requirements?: string | null
+          status?: Database["public"]["Enums"]["event_status"] | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          venue: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          current_participants?: number | null
+          description?: string | null
+          event_date?: string
+          id?: string
+          image_url?: string | null
+          max_participants?: number | null
+          organizer_id?: string
+          registration_deadline?: string
+          requirements?: string | null
+          status?: Database["public"]["Enums"]["event_status"] | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          venue?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_organizer_id_fkey"
+            columns: ["organizer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          event_id: string | null
+          id: string
+          message: string
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_id?: string | null
+          id?: string
+          message: string
+          read?: boolean | null
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string | null
+          id?: string
+          message?: string
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          department: string | null
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          student_id: string | null
+          updated_at: string | null
+          year_of_study: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          department?: string | null
+          email: string
+          full_name: string
+          id: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          student_id?: string | null
+          updated_at?: string | null
+          year_of_study?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          department?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          student_id?: string | null
+          updated_at?: string | null
+          year_of_study?: number | null
+        }
+        Relationships: []
+      }
+      registrations: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          event_id: string | null
+          id: string
+          notes: string | null
+          registration_date: string | null
+          status: Database["public"]["Enums"]["registration_status"] | null
+          user_id: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          event_id?: string | null
+          id?: string
+          notes?: string | null
+          registration_date?: string | null
+          status?: Database["public"]["Enums"]["registration_status"] | null
+          user_id?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          event_id?: string | null
+          id?: string
+          notes?: string | null
+          registration_date?: string | null
+          status?: Database["public"]["Enums"]["registration_status"] | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registrations_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +224,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      event_status:
+        | "draft"
+        | "pending_approval"
+        | "approved"
+        | "rejected"
+        | "cancelled"
+        | "completed"
+      registration_status: "pending" | "approved" | "rejected" | "waitlisted"
+      user_role: "student" | "organizer" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +347,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      event_status: [
+        "draft",
+        "pending_approval",
+        "approved",
+        "rejected",
+        "cancelled",
+        "completed",
+      ],
+      registration_status: ["pending", "approved", "rejected", "waitlisted"],
+      user_role: ["student", "organizer", "admin"],
+    },
   },
 } as const
