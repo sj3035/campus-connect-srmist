@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -149,7 +148,7 @@ const CreateEventPage = () => {
             tags: formData.tags,
             image_url: imageUrl,
             organizer_id: user.id,
-            status: 'pending',
+            status: 'pending_approval',
           })
           .select()
           .single();
