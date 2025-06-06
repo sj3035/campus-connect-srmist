@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,7 +18,7 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   // Fetch approved events
   const { data: events = [], isLoading: eventsLoading } = useQuery({
@@ -88,7 +87,7 @@ const Dashboard: React.FC = () => {
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !categoryFilter || event.category === categoryFilter;
+    const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
@@ -135,7 +134,7 @@ const Dashboard: React.FC = () => {
                   <SelectValue placeholder="Filter by category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category} value={category!}>
                       {category}
