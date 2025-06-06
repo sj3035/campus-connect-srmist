@@ -1,10 +1,13 @@
 
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Link } from 'react-router-dom';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, MapPin, Users, Clock } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, ArrowRight } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
+import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 type Event = Tables<'events'>;
 
@@ -21,106 +24,101 @@ const EventCard: React.FC<EventCardProps> = ({
   isRegistered = false,
   showRegisterButton = true 
 }) => {
+  // Format date for display
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return format(parseISO(dateString), "MMM d, yyyy");
   };
 
+  const formatTime = (dateString: string) => {
+    return format(parseISO(dateString), "h:mm a");
+  };
+
+  // Check if registration is open
   const isRegistrationOpen = () => {
     const deadline = new Date(event.registration_deadline);
     const now = new Date();
     return deadline > now && event.status === 'approved';
   };
 
+  // Prevent event bubbling for register button click
+  const handleRegisterClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onRegister?.(event.id);
+  };
+
   return (
-    <Card className="hover:shadow-lg transition-shadow duration-200">
-      {event.image_url && (
-        <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-          <img 
-            src={event.image_url} 
-            alt={event.title}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-semibold">{event.title}</CardTitle>
-          <Badge variant={event.status === 'approved' ? 'default' : 'secondary'}>
-            {event.status}
+    <Card className="overflow-hidden h-full hover:shadow-lg transition-shadow duration-300 card-hover">
+      <div className="aspect-video w-full relative">
+        <img 
+          src={event.image_url || 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&q=80&w=800'} 
+          alt={event.title}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute top-3 left-3">
+          <Badge className="bg-white/90 text-srmist-blue backdrop-blur-sm">
+            {event.category || 'Event'}
           </Badge>
         </div>
-        <CardDescription className="line-clamp-2">
+        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+          <h3 className="font-bold text-lg text-white line-clamp-1">{event.title}</h3>
+        </div>
+      </div>
+      
+      <CardContent className="p-4">
+        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">
           {event.description}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
+        </p>
+        
+        <div className="space-y-2 text-sm mb-4">
+          <div className="flex items-center text-gray-500">
+            <Calendar className="h-4 w-4 mr-2 text-srmist-blue" />
             <span>{formatDate(event.event_date)}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            <span>{event.venue}</span>
+          <div className="flex items-center text-gray-500">
+            <Clock className="h-4 w-4 mr-2 text-srmist-blue" />
+            <span>{formatTime(event.event_date)}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
+          <div className="flex items-center text-gray-500">
+            <MapPin className="h-4 w-4 mr-2 text-srmist-blue" />
+            <span className="line-clamp-1">{event.venue}</span>
+          </div>
+          <div className="flex items-center text-gray-500">
+            <Users className="h-4 w-4 mr-2 text-srmist-blue" />
             <span>
               {event.current_participants || 0}
               {event.max_participants && ` / ${event.max_participants}`} participants
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            <span>Registration closes: {formatDate(event.registration_deadline)}</span>
-          </div>
         </div>
-
-        {event.category && (
-          <Badge variant="outline">{event.category}</Badge>
-        )}
-
-        {event.tags && event.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {event.tags.map((tag, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {showRegisterButton && isRegistrationOpen() && !isRegistered && (
-          <Button 
-            onClick={() => onRegister?.(event.id)}
-            className="w-full"
-            disabled={event.max_participants ? (event.current_participants || 0) >= event.max_participants : false}
-          >
-            {event.max_participants && (event.current_participants || 0) >= event.max_participants 
-              ? 'Event Full' 
-              : 'Register'
-            }
-          </Button>
-        )}
-
-        {isRegistered && (
-          <Button variant="outline" className="w-full" disabled>
-            Already Registered
-          </Button>
-        )}
-
-        {!isRegistrationOpen() && event.status === 'approved' && (
-          <Button variant="outline" className="w-full" disabled>
-            Registration Closed
-          </Button>
-        )}
+        
+        <div className="mt-4 pt-4 border-t flex items-center justify-between">
+          {showRegisterButton && isRegistrationOpen() && !isRegistered ? (
+            <Button 
+              onClick={handleRegisterClick}
+              size="sm"
+              disabled={event.max_participants ? (event.current_participants || 0) >= event.max_participants : false}
+              className={cn(
+                "flex-1 mr-2",
+                event.max_participants && (event.current_participants || 0) >= event.max_participants && "bg-gray-400"
+              )}
+            >
+              {event.max_participants && (event.current_participants || 0) >= event.max_participants 
+                ? 'Event Full' 
+                : 'Register'
+              }
+            </Button>
+          ) : isRegistered ? (
+            <Badge variant="outline" className="bg-green-500 text-white border-green-500">Registered</Badge>
+          ) : !isRegistrationOpen() && event.status === 'approved' ? (
+            <Badge variant="outline" className="bg-gray-500 text-white border-gray-500">Registration Closed</Badge>
+          ) : null}
+          
+          <Link to={`/events/${event.id}`} className="group flex items-center text-srmist-blue">
+            <span className="hidden sm:inline mr-1">Details</span>
+            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
+        </div>
       </CardContent>
     </Card>
   );

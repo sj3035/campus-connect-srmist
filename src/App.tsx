@@ -5,9 +5,15 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { ThemeProvider } from "@/hooks/useTheme";
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import LandingPage from "./pages/LandingPage";
+import EventsPage from "./pages/EventsPage";
+import EventDetailsPage from "./pages/EventDetailsPage";
+import CreateEventPage from "./pages/CreateEventPage";
+import Footer from "./components/Footer";
 
 const queryClient = new QueryClient();
 
@@ -17,7 +23,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -28,11 +34,22 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<Auth />} />
+    <Route path="/" element={<LandingPage />} />
+    <Route path="/events" element={<EventsPage />} />
+    <Route path="/events/:id" element={<EventDetailsPage />} />
     <Route 
-      path="/" 
+      path="/dashboard" 
       element={
         <ProtectedRoute>
           <Dashboard />
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/create-event" 
+      element={
+        <ProtectedRoute>
+          <CreateEventPage />
         </ProtectedRoute>
       } 
     />
@@ -43,15 +60,22 @@ const AppRoutes = () => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider defaultTheme="light">
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <div className="flex flex-col min-h-screen">
+              <div className="flex-grow">
+                <AppRoutes />
+              </div>
+              <Footer />
+            </div>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
