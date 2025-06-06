@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,6 +26,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Calendar
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -384,7 +384,7 @@ const Dashboard: React.FC = () => {
                           <TableCell>
                             <Badge className={
                               event.status === 'approved' ? 'bg-green-500' : 
-                              event.status === 'pending' ? 'bg-yellow-500' :
+                              event.status === 'pending_approval' ? 'bg-yellow-500' :
                               'bg-red-500'
                             }>
                               {event.status}
@@ -498,7 +498,7 @@ const Dashboard: React.FC = () => {
                                     <TableCell>
                                       <Badge className={
                                         reg.status === 'approved' ? 'bg-green-500' : 
-                                        reg.status === 'pending' ? 'bg-yellow-500' :
+                                        reg.status === 'pending_approval' ? 'bg-yellow-500' :
                                         'bg-red-500'
                                       }>
                                         {reg.status}
