@@ -35,12 +35,18 @@ const AdminPanel = () => {
 
   const fetchEvents = async () => {
     try {
+      console.log('Fetching events...');
       const { data, error } = await supabase
         .from('events')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching events:', error);
+        throw error;
+      }
+      
+      console.log('Events fetched:', data?.length || 0);
       setEvents(data || []);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -56,12 +62,18 @@ const AdminPanel = () => {
 
   const fetchMedia = async () => {
     try {
+      console.log('Fetching media...');
       const { data, error } = await supabase
         .from('event_media')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching media:', error);
+        throw error;
+      }
+      
+      console.log('Media fetched:', data?.length || 0);
       setMedia(data || []);
     } catch (error) {
       console.error('Error fetching media:', error);

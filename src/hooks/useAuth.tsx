@@ -34,20 +34,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const fetchUserProfile = async () => {
-    if (!user) return;
+    if (!user) {
+      setUserRole(null);
+      return;
+    }
     
     try {
+      console.log('Fetching user profile for:', user.id);
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error('Error fetching user profile:', error);
         return;
       }
       
+      console.log('User role fetched:', data?.role);
       setUserRole(data?.role || 'student');
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -63,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Fetch user profile when user logs in
+        // Fetch user profile when user logs in, but defer it to avoid recursion
         if (session?.user) {
           setTimeout(() => {
             fetchUserProfile();
@@ -95,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user && !userRole) {
       fetchUserProfile();
     }
-  }, [user]);
+  }, [user, userRole]);
 
   const signUp = async (email: string, password: string, fullName: string, role: string = 'student') => {
     const redirectUrl = `${window.location.origin}/`;
