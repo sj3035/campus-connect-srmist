@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { FaGoogle } from 'react-icons/fa';
 import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
@@ -14,6 +15,7 @@ const Auth = () => {
   const { user, signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedRole, setSelectedRole] = useState('student');
 
   // Redirect if already authenticated
   if (user) {
@@ -41,7 +43,7 @@ const Auth = () => {
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
     
-    await signUp(email, password, fullName);
+    await signUp(email, password, fullName, selectedRole);
     setIsLoading(false);
   };
 
@@ -176,6 +178,24 @@ const Auth = () => {
                       required
                       className="bg-white/50 dark:bg-gray-900/50"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-role">Role</Label>
+                    <Select value={selectedRole} onValueChange={setSelectedRole}>
+                      <SelectTrigger className="bg-white/50 dark:bg-gray-900/50">
+                        <SelectValue placeholder="Select your role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="student">Student</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500">
+                      {selectedRole === 'admin' 
+                        ? 'Admins can create, edit, and manage all events and media.' 
+                        : 'Students can view events and register for them.'
+                      }
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>

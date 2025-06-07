@@ -7,10 +7,14 @@ import { toast } from '@/hooks/use-toast';
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  userRole: string | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, role?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  isAdmin: () => boolean;
+  isStudent: () => boolean;
+  fetchUserProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,15 +30,47 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return;
+      }
+      
+      setUserRole(data?.role || 'student');
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Fetch user profile when user logs in
+        if (session?.user) {
+          setTimeout(() => {
+            fetchUserProfile();
+          }, 0);
+        } else {
+          setUserRole(null);
+        }
       }
     );
 
@@ -43,12 +79,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      if (session?.user) {
+        setTimeout(() => {
+          fetchUserProfile();
+        }, 0);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  // Update fetchUserProfile when user changes
+  useEffect(() => {
+    if (user && !userRole) {
+      fetchUserProfile();
+    }
+  }, [user]);
+
+  const signUp = async (email: string, password: string, fullName: string, role: string = 'student') => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
@@ -57,7 +106,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          full_name: fullName
+          full_name: fullName,
+          role: role
         }
       }
     });
@@ -103,17 +153,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: error.message,
         variant: "destructive",
       });
+    } else {
+      setUserRole(null);
     }
   };
+
+  const isAdmin = () => userRole === 'admin';
+  const isStudent = () => userRole === 'student';
 
   return (
     <AuthContext.Provider value={{
       user,
       session,
+      userRole,
       loading,
       signUp,
       signIn,
       signOut,
+      isAdmin,
+      isStudent,
+      fetchUserProfile,
     }}>
       {children}
     </AuthContext.Provider>

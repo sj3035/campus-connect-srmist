@@ -13,6 +13,7 @@ import LandingPage from "./pages/LandingPage";
 import EventsPage from "./pages/EventsPage";
 import EventDetailsPage from "./pages/EventDetailsPage";
 import CreateEventPage from "./pages/CreateEventPage";
+import AdminPanel from "./components/AdminPanel";
 import Footer from "./components/Footer";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,28 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   return user ? <>{children}</> : <Navigate to="/auth" replace />;
+};
+
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading, isAdmin } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  if (!isAdmin()) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return <>{children}</>;
 };
 
 const AppRoutes = () => (
@@ -51,6 +74,14 @@ const AppRoutes = () => (
         <ProtectedRoute>
           <CreateEventPage />
         </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/admin" 
+      element={
+        <AdminRoute>
+          <AdminPanel />
+        </AdminRoute>
       } 
     />
     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
