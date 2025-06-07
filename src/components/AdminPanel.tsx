@@ -12,11 +12,12 @@ import { Calendar, Edit, Trash2, Plus, Upload, Image, Video } from 'lucide-react
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { Tables } from '@/integrations/supabase/types';
+import { Tables, Enums } from '@/integrations/supabase/types';
 import { format } from 'date-fns';
 
 type Event = Tables<'events'>;
 type EventMedia = Tables<'event_media'>;
+type EventStatus = Enums<'event_status'>;
 
 const AdminPanel = () => {
   const { user, isAdmin } = useAuth();
@@ -93,7 +94,7 @@ const AdminPanel = () => {
     }
   };
 
-  const handleUpdateEventStatus = async (eventId: string, status: string) => {
+  const handleUpdateEventStatus = async (eventId: string, status: EventStatus) => {
     try {
       const { error } = await supabase
         .from('events')
