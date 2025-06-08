@@ -26,7 +26,8 @@ import {
   Upload, 
   Image, 
   Info, 
-  Map
+  Map,
+  Shield
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
@@ -68,7 +69,7 @@ const STEPS = [
 ];
 
 const CreateEventPage = () => {
-  const { user } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,6 +83,56 @@ const CreateEventPage = () => {
     registration_deadline: new Date(),
     tags: [],
   });
+
+  // Check if user is admin - redirect if not
+  React.useEffect(() => {
+    if (!loading && (!user || !isAdmin())) {
+      toast({
+        title: "Access Denied",
+        description: "Only administrators can create events.",
+        variant: "destructive",
+      });
+      navigate('/');
+    }
+  }, [user, isAdmin, loading, navigate]);
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Header />
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied if not admin
+  if (!user || !isAdmin()) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Header />
+        <div className="max-w-md mx-auto px-4 py-16 text-center">
+          <div className="bg-white dark:bg-gray-950 rounded-lg p-8 shadow-sm">
+            <Shield className="h-16 w-16 mx-auto text-red-500 mb-4" />
+            <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Only administrators can create events. Students can view and register for events created by admins.
+            </p>
+            <div className="space-y-2">
+              <Button asChild className="w-full">
+                <a href="/events">Browse Events</a>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <a href="/">Go Home</a>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   // Update form data
   const updateFormData = (field: keyof EventFormData, value: any) => {

@@ -71,9 +71,9 @@ const AppRoutes = () => (
     <Route 
       path="/create-event" 
       element={
-        <ProtectedRoute>
+        <AdminRoute>
           <CreateEventPage />
-        </ProtectedRoute>
+        </AdminRoute>
       } 
     />
     <Route 
