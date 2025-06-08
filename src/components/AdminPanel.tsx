@@ -8,12 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Edit, Trash2, Plus, Upload, Image, Video } from 'lucide-react';
+import { Calendar, Edit, Trash2, Plus, Upload, Image, Video, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { Tables, Enums } from '@/integrations/supabase/types';
 import { format } from 'date-fns';
+import AdminCreation from './AdminCreation';
 
 type Event = Tables<'events'>;
 type EventMedia = Tables<'event_media'>;
@@ -182,13 +183,14 @@ const AdminPanel = () => {
     <div className="container mx-auto p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Admin Panel</h1>
-        <p className="text-gray-600">Manage events and media content</p>
+        <p className="text-gray-600">Manage events, media content, and admin accounts</p>
       </div>
 
       <Tabs defaultValue="events" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="events">Events Management</TabsTrigger>
           <TabsTrigger value="media">Media Management</TabsTrigger>
+          <TabsTrigger value="admins">Admin Management</TabsTrigger>
         </TabsList>
 
         <TabsContent value="events" className="space-y-4">
@@ -308,6 +310,36 @@ const AdminPanel = () => {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="admins" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-semibold">Admin Management</h2>
+          </div>
+
+          <div className="grid gap-6">
+            <AdminCreation />
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Admin Account Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-sm text-gray-600 space-y-2">
+                  <p><strong>Admin Domain Requirements:</strong></p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>@srmist.edu.in</li>
+                    <li>@ist.srmtrichy.edu.in</li>
+                  </ul>
+                  <p><strong>Default Password:</strong> SRMIST@2024</p>
+                  <p><strong>Password Change:</strong> New admins should use the "Forgot Password" feature to set their own password.</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>

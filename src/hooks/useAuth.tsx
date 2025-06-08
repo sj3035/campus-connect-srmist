@@ -15,6 +15,7 @@ interface AuthContextType {
   isAdmin: () => boolean;
   isStudent: () => boolean;
   fetchUserProfile: () => Promise<void>;
+  createAdminAccount: (email: string, fullName: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +33,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Check if email is from admin domain
+  const isAdminDomain = (email: string) => {
+    return email.endsWith('@srmist.edu.in') || email.endsWith('@ist.srmtrichy.edu.in');
+  };
 
   const fetchUserProfile = async () => {
     if (!user) {
@@ -103,6 +109,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, userRole]);
 
   const signUp = async (email: string, password: string, fullName: string, role: string = 'student') => {
+    // Check if trying to create admin account via regular signup
+    if (isAdminDomain(email)) {
+      const error = new Error('Admin accounts cannot be created through regular signup');
+      toast({
+        title: "Sign Up Error",
+        description: "Admin accounts cannot be created through this form. Please contact the system administrator.",
+        variant: "destructive",
+      });
+      return { error };
+    }
+
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
@@ -112,7 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
-          role: role
+          role: 'student' // Force all regular signups to be students
         }
       }
     });
@@ -127,6 +144,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast({
         title: "Check your email",
         description: "We've sent you a confirmation link.",
+      });
+    }
+
+    return { error };
+  };
+
+  const createAdminAccount = async (email: string, fullName: string) => {
+    if (!isAdminDomain(email)) {
+      const error = new Error('Only SRMIST domain emails can be admin accounts');
+      toast({
+        title: "Admin Account Error",
+        description: "Only @srmist.edu.in or @ist.srmtrichy.edu.in emails can be admin accounts.",
+        variant: "destructive",
+      });
+      return { error };
+    }
+
+    const commonPassword = 'SRMIST@2024'; // Common initial password for admin accounts
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password: commonPassword,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          full_name: fullName,
+          role: 'admin'
+        }
+      }
+    });
+
+    if (error) {
+      toast({
+        title: "Admin Account Creation Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Admin Account Created",
+        description: `Admin account created with default password. Please ask the user to change it using 'Forgot Password'.`,
       });
     }
 
@@ -178,6 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAdmin,
       isStudent,
       fetchUserProfile,
+      createAdminAccount,
     }}>
       {children}
     </AuthContext.Provider>

@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { FaGoogle } from 'react-icons/fa';
 import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
@@ -15,12 +14,16 @@ const Auth = () => {
   const { user, signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('student');
 
   // Redirect if already authenticated
   if (user) {
     return <Navigate to="/" replace />;
   }
+
+  // Check if email is from admin domain
+  const isAdminDomain = (email: string) => {
+    return email.endsWith('@srmist.edu.in') || email.endsWith('@ist.srmtrichy.edu.in');
+  };
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -43,7 +46,15 @@ const Auth = () => {
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
     
-    await signUp(email, password, fullName, selectedRole);
+    // Check if it's an admin domain
+    if (isAdminDomain(email)) {
+      alert('Admin accounts cannot be created through this form. Please contact the system administrator.');
+      setIsLoading(false);
+      return;
+    }
+    
+    // All user-created accounts are students
+    await signUp(email, password, fullName, 'student');
     setIsLoading(false);
   };
 
@@ -178,23 +189,8 @@ const Auth = () => {
                       required
                       className="bg-white/50 dark:bg-gray-900/50"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-role">Role</Label>
-                    <Select value={selectedRole} onValueChange={setSelectedRole}>
-                      <SelectTrigger className="bg-white/50 dark:bg-gray-900/50">
-                        <SelectValue placeholder="Select your role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="student">Student</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
                     <p className="text-xs text-gray-500">
-                      {selectedRole === 'admin' 
-                        ? 'Admins can create, edit, and manage all events and media.' 
-                        : 'Students can view events and register for them.'
-                      }
+                      Only student accounts can be created. Admin accounts are managed separately.
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -223,7 +219,7 @@ const Auth = () => {
                     className="w-full bg-srmist-blue hover:bg-srmist-dark-blue"
                     disabled={isLoading}
                   >
-                    {isLoading ? 'Creating Account...' : 'Create Account'}
+                    {isLoading ? 'Creating Account...' : 'Create Student Account'}
                   </Button>
                 </form>
               </TabsContent>
