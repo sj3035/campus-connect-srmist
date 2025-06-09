@@ -14,7 +14,7 @@ const CreateEventStepper: React.FC<StepperProps> = ({ currentStep, steps }) => {
   return (
     <div className="flex flex-col items-center mb-8">
       {/* Circles and connecting lines */}
-      <div className="relative flex justify-center items-center space-x-8 mb-4">
+      <div className="relative flex justify-center items-center mb-4">
         {steps.map((step, index) => (
           <div key={step.number} className="flex items-center">
             {/* Circle */}
@@ -33,7 +33,7 @@ const CreateEventStepper: React.FC<StepperProps> = ({ currentStep, steps }) => {
             {/* Line between steps (except for last step) */}
             {index < steps.length - 1 && (
               <div
-                className={`h-0.5 w-16 ml-8 transition-colors ${
+                className={`h-0.5 w-16 transition-colors ${
                   currentStep > step.number
                     ? 'bg-green-500'
                     : 'bg-gray-200 dark:bg-gray-700'
@@ -44,21 +44,29 @@ const CreateEventStepper: React.FC<StepperProps> = ({ currentStep, steps }) => {
         ))}
       </div>
       
-      {/* Step titles below circles - outside the grid */}
-      <div className="flex justify-center items-center space-x-8">
-        {steps.map((step) => (
-          <div key={step.number} className="flex flex-col items-center w-20">
-            <span
-              className={`text-xs text-center ${
-                currentStep === step.number
-                  ? 'text-srmist-blue font-medium'
-                  : currentStep > step.number
-                  ? 'text-green-500 font-medium'
-                  : 'text-gray-500 dark:text-gray-400'
-              }`}
-            >
-              {step.title}
-            </span>
+      {/* Step titles below circles - properly aligned */}
+      <div className="relative flex justify-center items-center">
+        {steps.map((step, index) => (
+          <div key={step.number} className="flex items-center">
+            {/* Title aligned with circle */}
+            <div className="w-10 flex justify-center">
+              <span
+                className={`text-xs text-center ${
+                  currentStep === step.number
+                    ? 'text-srmist-blue font-medium'
+                    : currentStep > step.number
+                    ? 'text-green-500 font-medium'
+                    : 'text-gray-500 dark:text-gray-400'
+                }`}
+              >
+                {step.title}
+              </span>
+            </div>
+            
+            {/* Spacer between titles (except for last step) */}
+            {index < steps.length - 1 && (
+              <div className="w-16" />
+            )}
           </div>
         ))}
       </div>
