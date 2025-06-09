@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -52,7 +53,7 @@ type Event = Tables<'events'>;
 type Registration = Tables<'registrations'>;
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -301,12 +302,14 @@ const Dashboard: React.FC = () => {
               </p>
             </div>
             
-            <Button asChild className="btn-hover">
-              <Link to="/create-event">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Create New Event
-              </Link>
-            </Button>
+            {isAdmin() && (
+              <Button asChild className="btn-hover">
+                <Link to="/create-event">
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Create New Event
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
 

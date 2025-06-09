@@ -29,7 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 const Header: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const { theme, setTheme } = useTheme();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -80,7 +80,7 @@ const Header: React.FC = () => {
                 Dashboard
               </Link>
             )}
-            {user && (
+            {user && isAdmin() && (
               <Link 
                 to="/create-event" 
                 className={cn(
@@ -208,20 +208,20 @@ const Header: React.FC = () => {
               </div>
             </Link>
             {user && (
-              <>
-                <Link to="/dashboard" className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-800">
-                  <div className="flex items-center">
-                    <ListTodo className="mr-2 h-4 w-4" />
-                    <span>Dashboard</span>
-                  </div>
-                </Link>
-                <Link to="/create-event" className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-800">
-                  <div className="flex items-center">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    <span>Create Event</span>
-                  </div>
-                </Link>
-              </>
+              <Link to="/dashboard" className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-800">
+                <div className="flex items-center">
+                  <ListTodo className="mr-2 h-4 w-4" />
+                  <span>Dashboard</span>
+                </div>
+              </Link>
+            )}
+            {user && isAdmin() && (
+              <Link to="/create-event" className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-800">
+                <div className="flex items-center">
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <span>Create Event</span>
+                </div>
+              </Link>
             )}
             {!user && (
               <div className="px-3 pt-4">
