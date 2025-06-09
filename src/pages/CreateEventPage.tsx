@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
+import CreateEventStepper from '@/components/CreateEventStepper';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation } from '@tanstack/react-query';
@@ -61,17 +62,17 @@ type EventFormData = {
 };
 
 const STEPS = [
-  { id: 'basic', title: 'Basic Info' },
-  { id: 'details', title: 'Event Details' },
-  { id: 'requirements', title: 'Requirements' },
-  { id: 'media', title: 'Media' },
-  { id: 'review', title: 'Review' },
+  { number: 1, title: 'Basic Info' },
+  { number: 2, title: 'Event Details' },
+  { number: 3, title: 'Requirements' },
+  { number: 4, title: 'Media' },
+  { number: 5, title: 'Review' },
 ];
 
 const CreateEventPage = () => {
   const { user, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [formData, setFormData] = useState<EventFormData>({
@@ -230,7 +231,7 @@ const CreateEventPage = () => {
   const validateCurrentStep = () => {
     try {
       switch(step) {
-        case 0: // Basic Info
+        case 1: // Basic Info
           if (!formData.title || formData.title.length < 5) {
             throw new Error('Title must be at least 5 characters');
           }
@@ -242,7 +243,7 @@ const CreateEventPage = () => {
           }
           break;
           
-        case 1: // Event Details
+        case 2: // Event Details
           if (!formData.venue) {
             throw new Error('Venue is required');
           }
@@ -257,7 +258,7 @@ const CreateEventPage = () => {
           }
           break;
           
-        // No strict validation for steps 2 & 3
+        // No strict validation for steps 3 & 4
       }
       return true;
     } catch (error: any) {
@@ -273,7 +274,7 @@ const CreateEventPage = () => {
   // Navigate to the next step
   const nextStep = () => {
     if (validateCurrentStep()) {
-      if (step < STEPS.length - 1) {
+      if (step < STEPS.length) {
         setStep(step + 1);
       } else {
         createEvent.mutate();
@@ -283,7 +284,7 @@ const CreateEventPage = () => {
   
   // Navigate to the previous step
   const prevStep = () => {
-    if (step > 0) {
+    if (step > 1) {
       setStep(step - 1);
     }
   };
@@ -291,7 +292,7 @@ const CreateEventPage = () => {
   // Render the appropriate form step
   const renderFormStep = () => {
     switch(step) {
-      case 0: // Basic Info
+      case 1: // Basic Info
         return (
           <div className="space-y-6">
             <div className="space-y-2">
@@ -334,7 +335,7 @@ const CreateEventPage = () => {
           </div>
         );
         
-      case 1: // Event Details
+      case 2: // Event Details
         return (
           <div className="space-y-6">
             <div className="space-y-2">
@@ -472,7 +473,7 @@ const CreateEventPage = () => {
           </div>
         );
         
-      case 2: // Requirements
+      case 3: // Requirements
         return (
           <div className="space-y-6">
             <div className="space-y-2">
@@ -527,7 +528,7 @@ const CreateEventPage = () => {
           </div>
         );
         
-      case 3: // Media
+      case 4: // Media
         return (
           <div className="space-y-6">
             <div className="space-y-2">
@@ -584,7 +585,7 @@ const CreateEventPage = () => {
           </div>
         );
         
-      case 4: // Review
+      case 5: // Review
         return (
           <div className="space-y-6">
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
@@ -694,69 +695,8 @@ const CreateEventPage = () => {
           </p>
         </div>
         
-        {/* Progress steps */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center">
-            {STEPS.map((s, i) => (
-              <div 
-                key={s.id} 
-                className={cn(
-                  "flex flex-col items-center",
-                  i > 0 && "relative"
-                )}
-              >
-                {/* Step circle */}
-                <div 
-                  className={cn(
-                    "z-10 flex items-center justify-center w-8 h-8 rounded-full border-2",
-                    i === step ? "border-srmist-blue bg-srmist-blue text-white" : 
-                      i < step ? "border-srmist-blue bg-srmist-blue text-white" : 
-                      "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500"
-                  )}
-                >
-                  {i < step ? (
-                    <CheckCircle2 className="h-5 w-5" />
-                  ) : (
-                    <span className="text-sm font-medium">{i + 1}</span>
-                  )}
-                </div>
-                
-                {/* Step label (visible on larger screens) */}
-                <div className="hidden md:block absolute top-0 -ml-10 text-center mt-16 w-20">
-                  <p 
-                    className={cn(
-                      "text-xs font-medium", 
-                      i === step ? "text-srmist-blue" : 
-                        i < step ? "text-srmist-blue" : 
-                        "text-gray-500"
-                    )}
-                  >
-                    {s.title}
-                  </p>
-                </div>
-                
-                {/* Connecting line */}
-                {i < STEPS.length - 1 && (
-                  <div className="hidden md:block absolute left-0 top-4 -ml-0.5 h-0.5 w-[125%] bg-gray-300 dark:bg-gray-700">
-                    <div 
-                      className={cn(
-                        "h-full bg-srmist-blue transition-all duration-500 ease-in-out",
-                        i < step ? "w-full" : "w-0"
-                      )}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-          
-          {/* Step labels on small screens */}
-          <div className="md:hidden flex justify-center mt-4">
-            <p className="text-sm font-medium text-srmist-blue">
-              {STEPS[step].title}
-            </p>
-          </div>
-        </div>
+        {/* Progress steps using the new component */}
+        <CreateEventStepper currentStep={step} steps={STEPS} />
         
         {/* Form */}
         <Card>
@@ -769,7 +709,7 @@ const CreateEventPage = () => {
                   type="button"
                   variant="outline"
                   onClick={prevStep}
-                  disabled={step === 0}
+                  disabled={step === 1}
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Previous
@@ -780,7 +720,7 @@ const CreateEventPage = () => {
                   onClick={nextStep}
                   disabled={isSubmitting}
                 >
-                  {step === STEPS.length - 1 ? (
+                  {step === STEPS.length ? (
                     isSubmitting ? 'Submitting...' : 'Submit Event'
                   ) : (
                     <>
