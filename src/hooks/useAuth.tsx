@@ -218,12 +218,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, fullName: string, role: string = 'student') => {
     try {
-      // Check if trying to create admin account via regular signup
-      if (isAdminDomain(email)) {
-        const error = new Error('Admin accounts cannot be created through regular signup');
+      // If it's an admin domain email, force role to be admin
+      const finalRole = isAdminDomain(email) ? 'admin' : 'student';
+      
+      if (isAdminDomain(email) && role !== 'admin') {
+        // Allow admin domain emails to sign up and automatically make them admins
+        console.log('Admin domain email detected, creating admin account');
+      } else if (isAdminDomain(email)) {
+        // This is the normal admin creation flow
+        console.log('Creating admin account for admin domain email');
+      } else if (role === 'admin') {
+        // Prevent non-admin domain emails from becoming admins
+        const error = new Error('Only SRMIST domain emails can be admin accounts');
         toast({
           title: "Sign Up Error",
-          description: "Admin accounts cannot be created through this form. Please contact the system administrator.",
+          description: "Only @srmist.edu.in or @ist.srmtrichy.edu.in emails can be admin accounts.",
           variant: "destructive",
         });
         return { error };
@@ -238,7 +247,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           emailRedirectTo: redirectUrl,
           data: {
             full_name: fullName,
-            role: 'student' // Force all regular signups to be students
+            role: finalRole
           }
         }
       });
@@ -306,7 +315,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         toast({
           title: "Admin Account Created",
-          description: `Admin account created with default password. Please ask the user to change it using 'Forgot Password'.`,
+          description: `Admin account created with default password: SRMIST@2024. The user must confirm their email before they can sign in.`,
         });
       }
 
@@ -333,11 +342,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Sign in error:', error);
-        toast({
-          title: "Sign In Error",
-          description: error.message,
-          variant: "destructive",
-        });
+        
+        // If it's an admin domain email and sign in failed, suggest they might need to create an account first
+        if (isAdminDomain(email) && error.message === 'Invalid login credentials') {
+          toast({
+            title: "Sign In Error",
+            description: "Admin account not found. Please ask an existing admin to create your account, or try signing up if you haven't created an account yet.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Sign In Error",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
       } else {
         console.log('Sign in successful for:', email);
         toast({

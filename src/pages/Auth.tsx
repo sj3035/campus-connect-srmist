@@ -46,15 +46,9 @@ const Auth = () => {
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
     
-    // Check if it's an admin domain
-    if (isAdminDomain(email)) {
-      alert('Admin accounts cannot be created through this form. Please contact the system administrator.');
-      setIsLoading(false);
-      return;
-    }
-    
-    // All user-created accounts are students
-    await signUp(email, password, fullName, 'student');
+    // Admin domain emails will automatically become admins, student emails become students
+    const role = isAdminDomain(email) ? 'admin' : 'student';
+    await signUp(email, password, fullName, role);
     setIsLoading(false);
   };
 
@@ -190,7 +184,7 @@ const Auth = () => {
                       className="bg-white/50 dark:bg-gray-900/50"
                     />
                     <p className="text-xs text-gray-500">
-                      Only student accounts can be created. Admin accounts are managed separately.
+                      SRMIST domain emails (@srmist.edu.in or @ist.srmtrichy.edu.in) automatically become admin accounts.
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -219,7 +213,7 @@ const Auth = () => {
                     className="w-full bg-srmist-blue hover:bg-srmist-dark-blue"
                     disabled={isLoading}
                   >
-                    {isLoading ? 'Creating Account...' : 'Create Student Account'}
+                    {isLoading ? 'Creating Account...' : 'Create Account'}
                   </Button>
                 </form>
               </TabsContent>
