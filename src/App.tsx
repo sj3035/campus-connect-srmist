@@ -54,40 +54,57 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const AppRoutes = () => (
-  <Routes>
-    <Route path="/auth" element={<Auth />} />
-    <Route path="/" element={<LandingPage />} />
-    <Route path="/events" element={<EventsPage />} />
-    <Route path="/events/:id" element={<EventDetailsPage />} />
-    <Route 
-      path="/dashboard" 
-      element={
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      } 
-    />
-    <Route 
-      path="/create-event" 
-      element={
-        <AdminRoute>
-          <CreateEventPage />
-        </AdminRoute>
-      } 
-    />
-    <Route 
-      path="/admin" 
-      element={
-        <AdminRoute>
-          <AdminPanel />
-        </AdminRoute>
-      } 
-    />
-    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-    <Route path="*" element={<NotFound />} />
-  </Routes>
-);
+const AppContent = () => {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <div className="flex-grow">
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/events" element={<EventsPage />} />
+          <Route path="/events/:id" element={<EventDetailsPage />} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/create-event" 
+            element={
+              <AdminRoute>
+                <CreateEventPage />
+              </AdminRoute>
+            } 
+          />
+          <Route 
+            path="/admin" 
+            element={
+              <AdminRoute>
+                <AdminPanel />
+              </AdminRoute>
+            } 
+          />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </div>
+      <Footer />
+    </div>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -97,12 +114,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <div className="flex flex-col min-h-screen">
-              <div className="flex-grow">
-                <AppRoutes />
-              </div>
-              <Footer />
-            </div>
+            <AppContent />
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
