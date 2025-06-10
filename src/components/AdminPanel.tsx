@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Edit, Trash2, Plus, Upload, Image, Video, Users, AlertCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Calendar, Edit, Trash2, Plus, Upload, Image, Video, Users, AlertCircle, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -26,6 +26,8 @@ const AdminPanel = () => {
   const [media, setMedia] = useState<EventMedia[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [rejectingEvent, setRejectingEvent] = useState<Event | null>(null);
+  const [declineReason, setDeclineReason] = useState('');
 
   useEffect(() => {
     if (isAdmin() || isExecutive()) {
@@ -133,11 +135,21 @@ const AdminPanel = () => {
     }
   };
 
-  const handleUpdateEventStatus = async (eventId: string, status: EventStatus) => {
+  const handleUpdateEventStatus = async (eventId: string, status: EventStatus, reason?: string) => {
     try {
+      const updateData: any = { 
+        status,
+        reviewed_by: user?.id,
+        reviewed_at: new Date().toISOString()
+      };
+      
+      if (status === 'rejected' && reason) {
+        updateData.declined_reason = reason;
+      }
+
       const { error } = await supabase
         .from('events')
-        .update({ status })
+        .update(updateData)
         .eq('id', eventId);
 
       if (error) throw error;
@@ -147,6 +159,8 @@ const AdminPanel = () => {
         description: `Event ${status} successfully`,
       });
       fetchEvents();
+      setRejectingEvent(null);
+      setDeclineReason('');
     } catch (error) {
       console.error('Error updating event status:', error);
       toast({
@@ -155,6 +169,21 @@ const AdminPanel = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleRejectEvent = () => {
+    if (!rejectingEvent) return;
+    
+    if (!declineReason.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a reason for declining the event",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    handleUpdateEventStatus(rejectingEvent.id, 'rejected', declineReason);
   };
 
   if (!isAdmin() && !isExecutive()) {
@@ -264,13 +293,60 @@ const AdminPanel = () => {
                           >
                             Approve
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleUpdateEventStatus(event.id, 'rejected')}
-                          >
-                            Reject
-                          </Button>
+                          <Dialog open={rejectingEvent?.id === event.id} onOpenChange={(open) => {
+                            if (!open) {
+                              setRejectingEvent(null);
+                              setDeclineReason('');
+                            }
+                          }}>
+                            <DialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => setRejectingEvent(event)}
+                              >
+                                Reject
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Reject Event</DialogTitle>
+                                <DialogDescription>
+                                  Please provide a reason for rejecting "{event.title}". This will help the organizer understand what needs to be improved.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="decline-reason">Reason for rejection</Label>
+                                  <Textarea
+                                    id="decline-reason"
+                                    placeholder="Explain why this event cannot be approved..."
+                                    value={declineReason}
+                                    onChange={(e) => setDeclineReason(e.target.value)}
+                                    className="mt-1"
+                                  />
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
+                                    setRejectingEvent(null);
+                                    setDeclineReason('');
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  onClick={handleRejectEvent}
+                                  disabled={!declineReason.trim()}
+                                >
+                                  Reject Event
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
                         </>
                       )}
                       <Button
