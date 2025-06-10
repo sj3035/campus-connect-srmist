@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Edit, Trash2, Plus, Upload, Image, Video, Users } from 'lucide-react';
+import { Calendar, Edit, Trash2, Plus, Upload, Image, Video, Users, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -21,14 +21,14 @@ type EventMedia = Tables<'event_media'>;
 type EventStatus = Enums<'event_status'>;
 
 const AdminPanel = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isExecutive } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [media, setMedia] = useState<EventMedia[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
   useEffect(() => {
-    if (isAdmin()) {
+    if (isAdmin() || isExecutive()) {
       fetchEvents();
       fetchMedia();
     }
@@ -131,38 +131,12 @@ const AdminPanel = () => {
     }
   };
 
-  const handleDeleteMedia = async (mediaId: string) => {
-    if (!confirm('Are you sure you want to delete this media?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('event_media')
-        .delete()
-        .eq('id', mediaId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Media deleted successfully",
-      });
-      fetchMedia();
-    } catch (error) {
-      console.error('Error deleting media:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete media",
-        variant: "destructive",
-      });
-    }
-  };
-
-  if (!isAdmin()) {
+  if (!isAdmin() && !isExecutive()) {
     return (
       <div className="container mx-auto p-6">
         <Card>
           <CardContent className="p-6">
-            <p className="text-center text-gray-500">Access denied. Admin privileges required.</p>
+            <p className="text-center text-gray-500">Access denied. Admin or Executive privileges required.</p>
           </CardContent>
         </Card>
       </div>
@@ -196,11 +170,30 @@ const AdminPanel = () => {
         <TabsContent value="events" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-semibold">Events</h2>
-            <Button onClick={() => window.location.href = '/create-event'}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Event
-            </Button>
+            {isAdmin() && (
+              <Button onClick={() => window.location.href = '/create-event'}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Event
+              </Button>
+            )}
           </div>
+
+          {/* Info banner for admins about approval process */}
+          {isAdmin() && (
+            <Card className="border-blue-200 bg-blue-50">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <h3 className="font-medium text-blue-900">Executive Approval Required</h3>
+                    <p className="text-sm text-blue-700">
+                      All events created by admins require approval from the executive before being published to students.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid gap-4">
             {events.map((event) => (
@@ -216,7 +209,7 @@ const AdminPanel = () => {
                           event.status === 'pending_approval' ? 'secondary' :
                           'outline'
                         }>
-                          {event.status}
+                          {event.status === 'pending_approval' ? 'Pending Approval' : event.status}
                         </Badge>
                       </div>
                       <p className="text-gray-600 mb-2">{event.description}</p>
@@ -228,9 +221,16 @@ const AdminPanel = () => {
                         <span>{event.venue}</span>
                         <span>{event.current_participants || 0} participants</span>
                       </div>
+                      {event.status === 'rejected' && event.declined_reason && (
+                        <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded">
+                          <p className="text-sm font-medium text-red-800">Decline Reason:</p>
+                          <p className="text-sm text-red-700">{event.declined_reason}</p>
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2">
-                      {event.status === 'pending_approval' && (
+                      {/* Only executives can approve/reject events */}
+                      {isExecutive() && event.status === 'pending_approval' && (
                         <>
                           <Button
                             size="sm"

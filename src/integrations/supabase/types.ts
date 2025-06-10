@@ -62,6 +62,7 @@ export type Database = {
           category: string | null
           created_at: string | null
           current_participants: number | null
+          declined_reason: string | null
           description: string | null
           event_date: string
           id: string
@@ -70,6 +71,8 @@ export type Database = {
           organizer_id: string
           registration_deadline: string
           requirements: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: Database["public"]["Enums"]["event_status"] | null
           tags: string[] | null
           title: string
@@ -80,6 +83,7 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           current_participants?: number | null
+          declined_reason?: string | null
           description?: string | null
           event_date: string
           id?: string
@@ -88,6 +92,8 @@ export type Database = {
           organizer_id: string
           registration_deadline: string
           requirements?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["event_status"] | null
           tags?: string[] | null
           title: string
@@ -98,6 +104,7 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           current_participants?: number | null
+          declined_reason?: string | null
           description?: string | null
           event_date?: string
           id?: string
@@ -106,6 +113,8 @@ export type Database = {
           organizer_id?: string
           registration_deadline?: string
           requirements?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["event_status"] | null
           tags?: string[] | null
           title?: string

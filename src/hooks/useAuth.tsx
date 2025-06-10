@@ -14,6 +14,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   isAdmin: () => boolean;
   isStudent: () => boolean;
+  isExecutive: () => boolean;
   fetchUserProfile: () => Promise<void>;
   createAdminAccount: (email: string, fullName: string) => Promise<{ error: any }>;
 }
@@ -218,21 +219,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, fullName: string, role: string = 'student') => {
     try {
-      // If it's an admin domain email, force role to be admin
-      const finalRole = isAdminDomain(email) ? 'admin' : 'student';
+      // If it's an admin domain email, force role to be admin (unless it's the executive)
+      let finalRole = 'student';
+      if (isAdminDomain(email)) {
+        finalRole = email === 'sj3035@srmist.edu.in' ? 'executive' : 'admin';
+      }
       
-      if (isAdminDomain(email) && role !== 'admin') {
-        // Allow admin domain emails to sign up and automatically make them admins
-        console.log('Admin domain email detected, creating admin account');
+      if (isAdminDomain(email) && role !== finalRole) {
+        // Allow admin domain emails to sign up and automatically make them admins/executive
+        console.log('Admin domain email detected, creating', finalRole, 'account');
       } else if (isAdminDomain(email)) {
         // This is the normal admin creation flow
-        console.log('Creating admin account for admin domain email');
-      } else if (role === 'admin') {
-        // Prevent non-admin domain emails from becoming admins
-        const error = new Error('Only SRMIST domain emails can be admin accounts');
+        console.log('Creating', finalRole, 'account for admin domain email');
+      } else if (role === 'admin' || role === 'executive') {
+        // Prevent non-admin domain emails from becoming admins/executives
+        const error = new Error('Only SRMIST domain emails can be admin/executive accounts');
         toast({
           title: "Sign Up Error",
-          description: "Only @srmist.edu.in or @ist.srmtrichy.edu.in emails can be admin accounts.",
+          description: "Only @srmist.edu.in or @ist.srmtrichy.edu.in emails can be admin/executive accounts.",
           variant: "destructive",
         });
         return { error };
@@ -406,6 +410,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isAdmin = () => userRole === 'admin';
   const isStudent = () => userRole === 'student';
+  const isExecutive = () => userRole === 'executive';
 
   return (
     <AuthContext.Provider value={{
@@ -418,6 +423,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signOut,
       isAdmin,
       isStudent,
+      isExecutive,
       fetchUserProfile,
       createAdminAccount,
     }}>
