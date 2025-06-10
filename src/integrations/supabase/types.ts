@@ -283,7 +283,7 @@ export type Database = {
         | "cancelled"
         | "completed"
       registration_status: "pending" | "approved" | "rejected" | "waitlisted"
-      user_role: "student" | "organizer" | "admin"
+      user_role: "student" | "organizer" | "admin" | "executive"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -408,7 +408,7 @@ export const Constants = {
         "completed",
       ],
       registration_status: ["pending", "approved", "rejected", "waitlisted"],
-      user_role: ["student", "organizer", "admin"],
+      user_role: ["student", "organizer", "admin", "executive"],
     },
   },
 } as const
