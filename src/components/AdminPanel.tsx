@@ -107,6 +107,32 @@ const AdminPanel = () => {
     }
   };
 
+  const handleDeleteMedia = async (mediaId: string) => {
+    if (!confirm('Are you sure you want to delete this media file?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('event_media')
+        .delete()
+        .eq('id', mediaId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Media file deleted successfully",
+      });
+      fetchMedia();
+    } catch (error) {
+      console.error('Error deleting media:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete media file",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleUpdateEventStatus = async (eventId: string, status: EventStatus) => {
     try {
       const { error } = await supabase
