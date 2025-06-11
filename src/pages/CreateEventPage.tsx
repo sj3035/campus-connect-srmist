@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -91,28 +90,61 @@ const CreateEventPage = () => {
     setLoading(true);
 
     try {
-      console.log('Creating event with status: pending_approval');
+      console.log('=== EVENT CREATION DEBUG ===');
+      console.log('Creating event with user:', user?.id, user?.email);
+      console.log('Event data:', {
+        title: formData.title,
+        status: 'pending_approval',
+        organizer_id: user.id
+      });
       
-      const { error } = await supabase
+      const eventData = {
+        title: formData.title,
+        description: formData.description,
+        venue: formData.venue,
+        category: formData.category || null,
+        requirements: formData.requirements || null,
+        event_date: eventDate.toISOString(),
+        registration_deadline: registrationDeadline.toISOString(),
+        max_participants: formData.maxParticipants ? parseInt(formData.maxParticipants) : null,
+        tags: formData.tags.length > 0 ? formData.tags : null,
+        organizer_id: user.id,
+        status: 'pending_approval' as const,
+        current_participants: 0,
+      };
+      
+      console.log('Full event data being inserted:', eventData);
+      
+      const { data: insertedEvent, error } = await supabase
         .from('events')
-        .insert({
-          title: formData.title,
-          description: formData.description,
-          venue: formData.venue,
-          category: formData.category || null,
-          requirements: formData.requirements || null,
-          event_date: eventDate.toISOString(),
-          registration_deadline: registrationDeadline.toISOString(),
-          max_participants: formData.maxParticipants ? parseInt(formData.maxParticipants) : null,
-          tags: formData.tags.length > 0 ? formData.tags : null,
-          organizer_id: user.id,
-          status: 'pending_approval', // This ensures the event goes to executive for approval
-          current_participants: 0,
-        });
+        .insert(eventData)
+        .select()
+        .single();
 
       if (error) {
         console.error('Error creating event:', error);
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
+      }
+
+      console.log('✓ Event created successfully:', insertedEvent);
+      
+      // Verify the event was created with correct status
+      const { data: verifyEvent, error: verifyError } = await supabase
+        .from('events')
+        .select('id, title, status, organizer_id')
+        .eq('id', insertedEvent.id)
+        .single();
+        
+      if (!verifyError && verifyEvent) {
+        console.log('✓ Event verification:', verifyEvent);
+      } else {
+        console.error('Event verification failed:', verifyError);
       }
 
       toast({

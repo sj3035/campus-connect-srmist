@@ -31,40 +31,71 @@ const ExecutivePanel = () => {
 
   const fetchPendingEvents = async () => {
     try {
-      console.log('Executive fetching pending events...');
-      console.log('User:', user?.email);
+      console.log('=== EXECUTIVE PANEL DEBUG ===');
+      console.log('Executive user:', user?.email, user?.id);
       console.log('Is Executive:', isExecutive());
       
-      const { data, error } = await supabase
+      // First, let's check if we can query the events table at all
+      console.log('Testing basic events table access...');
+      const { data: testQuery, error: testError } = await supabase
+        .from('events')
+        .select('id, title, status, organizer_id, created_at')
+        .limit(5);
+        
+      if (testError) {
+        console.error('ERROR: Cannot access events table:', testError);
+        toast({
+          title: "Database Error",
+          description: `Cannot access events table: ${testError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('✓ Events table accessible. Found', testQuery?.length || 0, 'total events');
+      console.log('All events sample:', testQuery);
+      
+      // Now check for pending approval events specifically
+      console.log('Querying for pending_approval events...');
+      const { data: pendingEvents, error: pendingError } = await supabase
         .from('events')
         .select('*')
         .eq('status', 'pending_approval')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching pending events:', error);
-        throw error;
+      if (pendingError) {
+        console.error('ERROR fetching pending events:', pendingError);
+        toast({
+          title: "Error",
+          description: `Failed to fetch pending events: ${pendingError.message}`,
+          variant: "destructive",
+        });
+        return;
       }
       
-      console.log('Raw pending events data:', data);
-      console.log('Pending events count:', data?.length || 0);
+      console.log('✓ Pending events query successful');
+      console.log('Pending events found:', pendingEvents?.length || 0);
+      console.log('Pending events data:', pendingEvents);
       
-      // Let's also check all events to see what's in the database
-      const { data: allEvents, error: allEventsError } = await supabase
+      // Check for any events with status variations
+      const { data: allStatuses, error: statusError } = await supabase
         .from('events')
-        .select('id, title, status, organizer_id, created_at')
+        .select('id, title, status')
         .order('created_at', { ascending: false });
         
-      if (!allEventsError) {
-        console.log('All events in database:', allEvents);
+      if (!statusError && allStatuses) {
+        console.log('All event statuses in database:');
+        allStatuses.forEach(event => {
+          console.log(`- ${event.title}: "${event.status}" (ID: ${event.id})`);
+        });
       }
       
-      setEvents(data || []);
+      setEvents(pendingEvents || []);
     } catch (error) {
-      console.error('Error fetching pending events:', error);
+      console.error('CATCH ERROR in fetchPendingEvents:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch pending events",
+        description: "An unexpected error occurred while fetching events",
         variant: "destructive",
       });
     } finally {
@@ -188,9 +219,24 @@ const ExecutivePanel = () => {
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Executive Panel</h1>
           <p className="text-gray-600">Review and approve events awaiting executive approval</p>
-          <div className="mt-2">
+          <div className="mt-2 flex gap-2">
             <Button onClick={fetchPendingEvents} variant="outline" size="sm">
               Refresh Events
+            </Button>
+            <Button 
+              onClick={async () => {
+                // Debug button to check database connection
+                const { data, error } = await supabase.from('events').select('count');
+                console.log('Debug query result:', { data, error });
+                toast({
+                  title: "Debug Info",
+                  description: error ? `Error: ${error.message}` : `Database accessible`,
+                });
+              }} 
+              variant="outline" 
+              size="sm"
+            >
+              Test DB Connection
             </Button>
           </div>
         </div>
@@ -205,7 +251,7 @@ const ExecutivePanel = () => {
                   <p className="text-gray-500">There are no events waiting for executive approval.</p>
                   <div className="mt-4">
                     <p className="text-sm text-gray-400">
-                      If you expect to see events here, please check with the admin team
+                      If you expect to see events here, please check the browser console for debugging information
                       or try refreshing the page.
                     </p>
                   </div>
