@@ -4,10 +4,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
-import { Calendar, Plus, Settings, LogOut, User } from 'lucide-react';
+import { Calendar, Plus, Settings, LogOut, User, Shield } from 'lucide-react';
 
 const RoleBasedHeader = () => {
-  const { user, userRole, signOut, isAdmin, isStudent } = useAuth();
+  const { user, userRole, signOut, isAdmin, isStudent, isExecutive } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -62,7 +62,8 @@ const RoleBasedHeader = () => {
               </Link>
             )}
             
-            {(isAdmin() || isStudent()) && (
+            {/* Only admins can create events, not executives */}
+            {isAdmin() && !isExecutive() && (
               <Link to="/create-event">
                 <Button variant="ghost">
                   <Plus className="h-4 w-4 mr-2" />
@@ -71,7 +72,18 @@ const RoleBasedHeader = () => {
               </Link>
             )}
             
-            {isAdmin() && (
+            {/* Executives get approval panel */}
+            {isExecutive() && (
+              <Link to="/executive">
+                <Button variant="ghost">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Executive Panel
+                </Button>
+              </Link>
+            )}
+            
+            {/* Admins get admin panel */}
+            {isAdmin() && !isExecutive() && (
               <Link to="/admin">
                 <Button variant="ghost">
                   <Settings className="h-4 w-4 mr-2" />

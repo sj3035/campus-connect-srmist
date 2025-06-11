@@ -70,7 +70,7 @@ const STEPS = [
 ];
 
 const CreateEventPage = () => {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, isExecutive, loading } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,9 +85,9 @@ const CreateEventPage = () => {
     tags: [],
   });
 
-  // Check if user is admin - redirect if not
+  // Check if user is admin (but not executive) - redirect if not
   React.useEffect(() => {
-    if (!loading && (!user || !isAdmin())) {
+    if (!loading && (!user || !isAdmin() || isExecutive())) {
       toast({
         title: "Access Denied",
         description: "Only administrators can create events.",
@@ -95,7 +95,7 @@ const CreateEventPage = () => {
       });
       navigate('/');
     }
-  }, [user, isAdmin, loading, navigate]);
+  }, [user, isAdmin, isExecutive, loading, navigate]);
 
   // Show loading state while checking auth
   if (loading) {
@@ -109,8 +109,8 @@ const CreateEventPage = () => {
     );
   }
 
-  // Show access denied if not admin
-  if (!user || !isAdmin()) {
+  // Show access denied if not admin or if executive
+  if (!user || !isAdmin() || isExecutive()) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header />
@@ -119,7 +119,7 @@ const CreateEventPage = () => {
             <Shield className="h-16 w-16 mx-auto text-red-500 mb-4" />
             <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Only administrators can create events. Students can view and register for events created by admins.
+              Only administrators can create events. Executives can approve events, and students can view and register for events.
             </p>
             <div className="space-y-2">
               <Button asChild className="w-full">

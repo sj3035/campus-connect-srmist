@@ -14,6 +14,7 @@ import EventsPage from "./pages/EventsPage";
 import EventDetailsPage from "./pages/EventDetailsPage";
 import CreateEventPage from "./pages/CreateEventPage";
 import AdminPanel from "./components/AdminPanel";
+import ExecutivePanel from "./components/ExecutivePanel";
 import Footer from "./components/Footer";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,28 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (!isAdmin()) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
+const ExecutiveRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading, isExecutive } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  if (!isExecutive()) {
     return <Navigate to="/" replace />;
   }
   
@@ -95,6 +118,14 @@ const AppContent = () => {
               <AdminRoute>
                 <AdminPanel />
               </AdminRoute>
+            } 
+          />
+          <Route 
+            path="/executive" 
+            element={
+              <ExecutiveRoute>
+                <ExecutivePanel />
+              </ExecutiveRoute>
             } 
           />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

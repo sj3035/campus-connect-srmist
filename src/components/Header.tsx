@@ -15,6 +15,8 @@ import {
   ListTodo,
   Moon,
   Sun,
+  Shield,
+  Settings,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -29,7 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 const Header: React.FC = () => {
-  const { user, signOut, isAdmin } = useAuth();
+  const { user, signOut, isAdmin, isExecutive, isStudent } = useAuth();
   const { theme, setTheme } = useTheme();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -69,7 +71,7 @@ const Header: React.FC = () => {
             >
               Events
             </Link>
-            {user && (
+            {user && isStudent() && (
               <Link 
                 to="/dashboard" 
                 className={cn(
@@ -80,7 +82,7 @@ const Header: React.FC = () => {
                 Dashboard
               </Link>
             )}
-            {user && isAdmin() && (
+            {user && isAdmin() && !isExecutive() && (
               <Link 
                 to="/create-event" 
                 className={cn(
@@ -89,6 +91,28 @@ const Header: React.FC = () => {
                 )}
               >
                 Create Event
+              </Link>
+            )}
+            {user && isExecutive() && (
+              <Link 
+                to="/executive" 
+                className={cn(
+                  "px-1 py-2 text-sm font-medium animated-link", 
+                  isActive('/executive') ? "text-primary" : "text-gray-700 dark:text-gray-300"
+                )}
+              >
+                Executive Panel
+              </Link>
+            )}
+            {user && isAdmin() && !isExecutive() && (
+              <Link 
+                to="/admin" 
+                className={cn(
+                  "px-1 py-2 text-sm font-medium animated-link", 
+                  isActive('/admin') ? "text-primary" : "text-gray-700 dark:text-gray-300"
+                )}
+              >
+                Admin Panel
               </Link>
             )}
           </nav>
@@ -150,12 +174,30 @@ const Header: React.FC = () => {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/dashboard" className="flex cursor-pointer">
-                        <Calendar className="mr-2 h-4 w-4" />
-                        <span>My Events</span>
-                      </Link>
-                    </DropdownMenuItem>
+                    {isStudent() && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard" className="flex cursor-pointer">
+                          <Calendar className="mr-2 h-4 w-4" />
+                          <span>My Events</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {isExecutive() && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/executive" className="flex cursor-pointer">
+                          <Shield className="mr-2 h-4 w-4" />
+                          <span>Executive Panel</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {isAdmin() && !isExecutive() && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin" className="flex cursor-pointer">
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Admin Panel</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem asChild>
                       <Link to="/profile" className="flex cursor-pointer">
                         <User className="mr-2 h-4 w-4" />
@@ -207,7 +249,7 @@ const Header: React.FC = () => {
                 <span>Events</span>
               </div>
             </Link>
-            {user && (
+            {user && isStudent() && (
               <Link to="/dashboard" className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-800">
                 <div className="flex items-center">
                   <ListTodo className="mr-2 h-4 w-4" />
@@ -215,11 +257,27 @@ const Header: React.FC = () => {
                 </div>
               </Link>
             )}
-            {user && isAdmin() && (
+            {user && isAdmin() && !isExecutive() && (
               <Link to="/create-event" className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-800">
                 <div className="flex items-center">
                   <PlusCircle className="mr-2 h-4 w-4" />
                   <span>Create Event</span>
+                </div>
+              </Link>
+            )}
+            {user && isExecutive() && (
+              <Link to="/executive" className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-800">
+                <div className="flex items-center">
+                  <Shield className="mr-2 h-4 w-4" />
+                  <span>Executive Panel</span>
+                </div>
+              </Link>
+            )}
+            {user && isAdmin() && !isExecutive() && (
+              <Link to="/admin" className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-800">
+                <div className="flex items-center">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Admin Panel</span>
                 </div>
               </Link>
             )}
