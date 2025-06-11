@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
+import { toast } from '@/hooks/use-toast';
 
 type Profile = Tables<'profiles'>;
 
@@ -11,9 +12,14 @@ interface AuthContextType {
   profile: Profile | null;
   session: Session | null;
   loading: boolean;
+  userRole: string | null;
   signOut: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string, role?: string) => Promise<void>;
+  createAdminAccount: (email: string, fullName: string) => Promise<void>;
   isAdmin: () => boolean;
   isExecutive: () => boolean;
+  isStudent: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -75,6 +81,110 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Signed in successfully",
+      });
+    } catch (error) {
+      console.error('Error signing in:', error);
+      throw error;
+    }
+  };
+
+  const signUp = async (email: string, password: string, fullName: string, role: string = 'student') => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            role: role,
+          },
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Account created successfully! Please check your email to confirm your account.",
+      });
+    } catch (error) {
+      console.error('Error signing up:', error);
+      throw error;
+    }
+  };
+
+  const createAdminAccount = async (email: string, fullName: string) => {
+    try {
+      // Check if email is from admin domain
+      const isAdminDomain = email.endsWith('@srmist.edu.in') || email.endsWith('@ist.srmtrichy.edu.in');
+      
+      if (!isAdminDomain) {
+        toast({
+          title: "Error",
+          description: "Admin accounts can only be created for SRMIST domain emails",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase.auth.signUp({
+        email,
+        password: 'SRMIST@2024', // Default password
+        options: {
+          data: {
+            full_name: fullName,
+            role: 'admin',
+          },
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Admin account created successfully! Default password: SRMIST@2024",
+      });
+    } catch (error) {
+      console.error('Error creating admin account:', error);
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
@@ -87,14 +197,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return profile?.role === 'executive';
   };
 
+  const isStudent = () => {
+    return profile?.role === 'student';
+  };
+
+  const userRole = profile?.role || null;
+
   const value = {
     user,
     profile,
     session,
     loading,
+    userRole,
     signOut,
+    signIn,
+    signUp,
+    createAdminAccount,
     isAdmin,
     isExecutive,
+    isStudent,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
