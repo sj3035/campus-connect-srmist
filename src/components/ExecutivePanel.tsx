@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Calendar, CheckCircle, XCircle, Eye, Clock } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -31,68 +31,29 @@ const ExecutivePanel = () => {
 
   const fetchPendingEvents = async () => {
     try {
-      console.log('=== EXECUTIVE PANEL DEBUG ===');
-      console.log('Executive user:', user?.email, user?.id);
-      console.log('Is Executive:', isExecutive());
+      setLoading(true);
+      console.log('Fetching pending events for executive:', user?.email);
       
-      // First, let's check if we can query the events table at all
-      console.log('Testing basic events table access...');
-      const { data: testQuery, error: testError } = await supabase
-        .from('events')
-        .select('id, title, status, organizer_id, created_at')
-        .limit(5);
-        
-      if (testError) {
-        console.error('ERROR: Cannot access events table:', testError);
-        toast({
-          title: "Database Error",
-          description: `Cannot access events table: ${testError.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      console.log('✓ Events table accessible. Found', testQuery?.length || 0, 'total events');
-      console.log('All events sample:', testQuery);
-      
-      // Now check for pending approval events specifically
-      console.log('Querying for pending_approval events...');
-      const { data: pendingEvents, error: pendingError } = await supabase
+      const { data: pendingEvents, error } = await supabase
         .from('events')
         .select('*')
         .eq('status', 'pending_approval')
         .order('created_at', { ascending: false });
 
-      if (pendingError) {
-        console.error('ERROR fetching pending events:', pendingError);
+      if (error) {
+        console.error('Error fetching pending events:', error);
         toast({
           title: "Error",
-          description: `Failed to fetch pending events: ${pendingError.message}`,
+          description: `Failed to fetch pending events: ${error.message}`,
           variant: "destructive",
         });
         return;
       }
       
-      console.log('✓ Pending events query successful');
       console.log('Pending events found:', pendingEvents?.length || 0);
-      console.log('Pending events data:', pendingEvents);
-      
-      // Check for any events with status variations
-      const { data: allStatuses, error: statusError } = await supabase
-        .from('events')
-        .select('id, title, status')
-        .order('created_at', { ascending: false });
-        
-      if (!statusError && allStatuses) {
-        console.log('All event statuses in database:');
-        allStatuses.forEach(event => {
-          console.log(`- ${event.title}: "${event.status}" (ID: ${event.id})`);
-        });
-      }
-      
       setEvents(pendingEvents || []);
     } catch (error) {
-      console.error('CATCH ERROR in fetchPendingEvents:', error);
+      console.error('Error in fetchPendingEvents:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred while fetching events",
@@ -219,24 +180,10 @@ const ExecutivePanel = () => {
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Executive Panel</h1>
           <p className="text-gray-600">Review and approve events awaiting executive approval</p>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-4">
             <Button onClick={fetchPendingEvents} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
               Refresh Events
-            </Button>
-            <Button 
-              onClick={async () => {
-                // Debug button to check database connection
-                const { data, error } = await supabase.from('events').select('count');
-                console.log('Debug query result:', { data, error });
-                toast({
-                  title: "Debug Info",
-                  description: error ? `Error: ${error.message}` : `Database accessible`,
-                });
-              }} 
-              variant="outline" 
-              size="sm"
-            >
-              Test DB Connection
             </Button>
           </div>
         </div>
@@ -249,12 +196,6 @@ const ExecutivePanel = () => {
                   <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">No Pending Events</h3>
                   <p className="text-gray-500">There are no events waiting for executive approval.</p>
-                  <div className="mt-4">
-                    <p className="text-sm text-gray-400">
-                      If you expect to see events here, please check the browser console for debugging information
-                      or try refreshing the page.
-                    </p>
-                  </div>
                 </div>
               </CardContent>
             </Card>
