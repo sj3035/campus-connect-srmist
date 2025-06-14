@@ -1,15 +1,18 @@
+
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface EventRegistrationFormProps {
   eventId: string;
 }
 
 const EventRegistrationForm: React.FC<EventRegistrationFormProps> = ({ eventId }) => {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -31,14 +34,23 @@ const EventRegistrationForm: React.FC<EventRegistrationFormProps> = ({ eventId }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      toast({
+        title: "Not Signed In",
+        description: "You must be signed in to register for this event.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!isFormValid) return;
-
     setLoading(true);
 
+    // Insert registration (with user_id for RLS)
     const { error } = await supabase.from("registrations").insert({
       ...form,
       event_id: eventId,
-      // other fields may be added here, set status to "pending" by default
+      user_id: user.id,
+      status: "pending", // ensure we keep this as default
     });
 
     setLoading(false);
@@ -46,7 +58,7 @@ const EventRegistrationForm: React.FC<EventRegistrationFormProps> = ({ eventId }
     if (error) {
       toast({
         title: "Error",
-        description: "Failed to register for the event",
+        description: error.message || "Failed to register for the event",
         variant: "destructive",
       });
     } else {
@@ -62,6 +74,15 @@ const EventRegistrationForm: React.FC<EventRegistrationFormProps> = ({ eventId }
       });
     }
   };
+
+  // If user is not logged in, show only a message
+  if (!user) {
+    return (
+      <div className="text-center py-6">
+        <p className="text-muted-foreground">You must be signed in to register for this event.</p>
+      </div>
+    );
+  }
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
