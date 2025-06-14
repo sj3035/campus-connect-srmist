@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -145,22 +144,40 @@ const Dashboard: React.FC = () => {
   const registerMutation = useMutation({
     mutationFn: async (eventId: string) => {
       if (!user) throw new Error('User not authenticated');
-      
-      const { error } = await supabase
-        .from('registrations')
-        .insert({
-          event_id: eventId,
-          user_id: user.id,
-          status: 'pending'
-        });
-      
+
+      // ERROR FIX: Fetch user profile data for required fields
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, email, phone, student_id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+      if (!profile)
+        throw new Error("User profile not found. Please update your profile.");
+
+      // Get student_id as roll_number
+      const roll_number = profile.student_id || "";
+
+      // Insert with all required fields, maintain other fields as null/undefined if not available
+      const { error } = await supabase.from('registrations').insert({
+        event_id: eventId,
+        user_id: user.id,
+        status: 'pending',
+        full_name: profile.full_name,
+        email: profile.email,
+        phone: profile.phone || "",
+        roll_number: roll_number,
+      });
+
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['registrations'] });
       toast({
         title: "Registration Successful",
-        description: "You have successfully registered for the event. Your registration is pending approval.",
+        description:
+          "You have successfully registered for the event. Your registration is pending approval.",
       });
     },
     onError: (error: any) => {

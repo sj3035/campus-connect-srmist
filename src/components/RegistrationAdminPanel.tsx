@@ -12,14 +12,16 @@ type Registration = {
   email: string;
   phone: string;
   roll_number: string;
-  status: string | null;
+  status: "approved" | "rejected" | "pending" | "waitlisted" | null;
 };
 
 interface RegistrationAdminPanelProps {
   eventId: string;
 }
 
-const RegistrationAdminPanel: React.FC<RegistrationAdminPanelProps> = ({ eventId }) => {
+const RegistrationAdminPanel: React.FC<RegistrationAdminPanelProps> = ({
+  eventId,
+}) => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,10 +49,17 @@ const RegistrationAdminPanel: React.FC<RegistrationAdminPanelProps> = ({ eventId
     setLoading(false);
   };
 
-  const updateStatus = async (id: string, status: string) => {
+  // ERROR FIX: change status type to registration_status
+  const updateStatus = async (
+    id: string,
+    status: "approved" | "rejected" | "pending" | "waitlisted"
+  ) => {
     const { error } = await supabase
       .from("registrations")
-      .update({ status, approved_at: status === "approved" ? new Date().toISOString() : null })
+      .update({
+        status,
+        approved_at: status === "approved" ? new Date().toISOString() : null,
+      })
       .eq("id", id);
 
     if (error) {
@@ -92,10 +101,15 @@ const RegistrationAdminPanel: React.FC<RegistrationAdminPanelProps> = ({ eventId
             </div>
             <div>
               <span className="font-bold">Status:</span>{" "}
-              <span className={
-                reg.status === "approved" ? "text-green-600" :
-                reg.status === "rejected" ? "text-red-600" : "text-gray-500"
-              }>
+              <span
+                className={
+                  reg.status === "approved"
+                    ? "text-green-600"
+                    : reg.status === "rejected"
+                    ? "text-red-600"
+                    : "text-gray-500"
+                }
+              >
                 {reg.status}
               </span>
             </div>

@@ -77,24 +77,42 @@ const EventDetailsPage = () => {
     mutationFn: async () => {
       if (!user) throw new Error('User not authenticated');
       if (!id) throw new Error('Event ID is required');
-      
+
       setRegistering(true);
-      
-      const { error } = await supabase
-        .from('registrations')
-        .insert({
-          event_id: id,
-          user_id: user.id,
-          status: 'pending'
-        });
-      
+
+      // ERROR FIX: Fetch user profile for registration required fields
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("full_name, email, phone, student_id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+      if (!profile)
+        throw new Error(
+          "User profile not found. Please update your profile."
+        );
+
+      const roll_number = profile.student_id || "";
+
+      const { error } = await supabase.from("registrations").insert({
+        event_id: id,
+        user_id: user.id,
+        status: "pending",
+        full_name: profile.full_name,
+        email: profile.email,
+        phone: profile.phone || "",
+        roll_number: roll_number,
+      });
+
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['registration'] });
+      queryClient.invalidateQueries({ queryKey: ["registration"] });
       toast({
         title: "Registration Successful",
-        description: "You have successfully registered for the event. Your registration is pending approval.",
+        description:
+          "You have successfully registered for the event. Your registration is pending approval.",
       });
       setRegistering(false);
     },
