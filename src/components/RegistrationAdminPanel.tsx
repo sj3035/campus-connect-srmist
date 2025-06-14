@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 type Registration = {
   id: string;
@@ -16,7 +17,7 @@ type Registration = {
 };
 
 interface RegistrationAdminPanelProps {
-  eventId: string;
+  eventId?: string;
 }
 
 const RegistrationAdminPanel: React.FC<RegistrationAdminPanelProps> = ({
@@ -24,18 +25,51 @@ const RegistrationAdminPanel: React.FC<RegistrationAdminPanelProps> = ({
 }) => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user, isAdmin } = useAuth();
 
   useEffect(() => {
-    fetchRegistrations();
+    if (isAdmin()) {
+      fetchRegistrations();
+    }
     // eslint-disable-next-line
-  }, [eventId]);
+  }, [eventId, user]);
 
   const fetchRegistrations = async () => {
     setLoading(true);
+
+    // Find events organized by this user if eventId is not provided, else fetch for the provided eventId
+    let eventQuery = supabase.from("events").select("id");
+
+    if (eventId) {
+      eventQuery = eventQuery.eq("id", eventId);
+    } else {
+      if (!user) return;
+      eventQuery = eventQuery.eq("organizer_id", user.id);
+    }
+
+    const { data: eventData, error: eventError } = await eventQuery;
+    if (eventError) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch events",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    const eventIds = eventData?.map((e) => e.id);
+    if (!eventIds || eventIds.length === 0) {
+      setRegistrations([]);
+      setLoading(false);
+      return;
+    }
+
+    // Fetch registrations for those events
     const { data, error } = await supabase
       .from("registrations")
       .select("*")
-      .eq("event_id", eventId);
+      .in("event_id", eventIds);
 
     if (error) {
       toast({
@@ -49,7 +83,6 @@ const RegistrationAdminPanel: React.FC<RegistrationAdminPanelProps> = ({
     setLoading(false);
   };
 
-  // ERROR FIX: change status type to registration_status
   const updateStatus = async (
     id: string,
     status: "approved" | "rejected" | "pending" | "waitlisted"
@@ -73,11 +106,11 @@ const RegistrationAdminPanel: React.FC<RegistrationAdminPanelProps> = ({
         title: "Success",
         description: `Marked as ${status}`,
       });
-      // Placeholder for notification logic:
-      // await sendEmailOrSmsNotification(email, status) - not implemented here.
       fetchRegistrations();
     }
   };
+
+  if (!isAdmin()) return <div>You do not have access to manage participants.</div>;
 
   if (loading) return <div>Loading...</div>;
   if (!registrations.length) return <div>No registrations yet.</div>;
@@ -138,3 +171,4 @@ const RegistrationAdminPanel: React.FC<RegistrationAdminPanelProps> = ({
 };
 
 export default RegistrationAdminPanel;
+

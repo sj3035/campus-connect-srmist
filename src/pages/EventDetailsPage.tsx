@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -21,6 +20,8 @@ import { Badge } from '@/components/ui/badge';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import EventRegistrationForm from '@/components/EventRegistrationForm';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 type Event = Tables<'events'>;
 type Registration = Tables<'registrations'>;
@@ -31,6 +32,7 @@ const EventDetailsPage = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [registering, setRegistering] = useState(false);
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
 
   // Fetch event details
   const { data: event, isLoading: eventLoading } = useQuery({
@@ -367,9 +369,9 @@ const EventDetailsPage = () => {
                             className="w-full"
                             disabled={!user || registering || 
                               (!!event.max_participants && (event.current_participants || 0) >= event.max_participants)}
-                            onClick={() => user && registerMutation.mutate()}
+                            onClick={() => setShowRegistrationForm(true)}
                           >
-                            {registering ? "Registering..." : "Register Now"}
+                            Register Now
                           </Button>
                         )}
                         
@@ -396,6 +398,13 @@ const EventDetailsPage = () => {
                 </div>
               </div>
             </div>
+            {/* Registration Form Modal */}
+            <Dialog open={showRegistrationForm} onOpenChange={setShowRegistrationForm}>
+              <DialogContent className="max-w-md">
+                <h2 className="font-semibold text-lg mb-4">Register for this Event</h2>
+                <EventRegistrationForm eventId={event.id} />
+              </DialogContent>
+            </Dialog>
           </div>
         ) : (
           <div className="text-center py-16">
