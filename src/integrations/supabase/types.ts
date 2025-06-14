@@ -222,30 +222,42 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          email: string
           event_id: string | null
+          full_name: string
           id: string
           notes: string | null
+          phone: string
           registration_date: string | null
+          roll_number: string
           status: Database["public"]["Enums"]["registration_status"] | null
           user_id: string | null
         }
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          email: string
           event_id?: string | null
+          full_name: string
           id?: string
           notes?: string | null
+          phone: string
           registration_date?: string | null
+          roll_number: string
           status?: Database["public"]["Enums"]["registration_status"] | null
           user_id?: string | null
         }
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          email?: string
           event_id?: string | null
+          full_name?: string
           id?: string
           notes?: string | null
+          phone?: string
           registration_date?: string | null
+          roll_number?: string
           status?: Database["public"]["Enums"]["registration_status"] | null
           user_id?: string | null
         }
