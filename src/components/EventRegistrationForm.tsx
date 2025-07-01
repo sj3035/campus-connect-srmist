@@ -12,7 +12,7 @@ interface EventRegistrationFormProps {
 }
 
 const EventRegistrationForm: React.FC<EventRegistrationFormProps> = ({ eventId }) => {
-  const { user } = useAuth();
+  const { user, isStudent } = useAuth();
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -38,6 +38,14 @@ const EventRegistrationForm: React.FC<EventRegistrationFormProps> = ({ eventId }
       toast({
         title: "Not Signed In",
         description: "You must be signed in to register for this event.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!isStudent()) {
+      toast({
+        title: "Access Denied",
+        description: "Only students can register for events.",
         variant: "destructive",
       });
       return;
@@ -75,11 +83,19 @@ const EventRegistrationForm: React.FC<EventRegistrationFormProps> = ({ eventId }
     }
   };
 
-  // If user is not logged in, show only a message
+  // If user is not logged in or not a student, show appropriate message
   if (!user) {
     return (
       <div className="text-center py-6">
         <p className="text-muted-foreground">You must be signed in to register for this event.</p>
+      </div>
+    );
+  }
+
+  if (!isStudent()) {
+    return (
+      <div className="text-center py-6">
+        <p className="text-muted-foreground">Only students can register for events.</p>
       </div>
     );
   }

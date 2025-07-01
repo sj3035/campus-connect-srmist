@@ -8,6 +8,7 @@ import { Calendar, MapPin, Users, Clock, ArrowRight } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 type Event = Tables<'events'>;
 
@@ -24,6 +25,8 @@ const EventCard: React.FC<EventCardProps> = ({
   isRegistered = false,
   showRegisterButton = true 
 }) => {
+  const { isStudent } = useAuth();
+
   // Format date for display
   const formatDate = (dateString: string) => {
     return format(parseISO(dateString), "MMM d, yyyy");
@@ -46,6 +49,9 @@ const EventCard: React.FC<EventCardProps> = ({
     e.stopPropagation();
     onRegister?.(event.id);
   };
+
+  // Only allow registration for students
+  const canRegister = isStudent() && showRegisterButton && isRegistrationOpen() && !isRegistered;
 
   return (
     <Card className="overflow-hidden h-full hover:shadow-lg transition-shadow duration-300 card-hover">
@@ -93,7 +99,7 @@ const EventCard: React.FC<EventCardProps> = ({
         </div>
         
         <div className="mt-4 pt-4 border-t flex items-center justify-between">
-          {showRegisterButton && isRegistrationOpen() && !isRegistered ? (
+          {canRegister ? (
             <Button 
               onClick={handleRegisterClick}
               size="sm"

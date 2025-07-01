@@ -54,7 +54,7 @@ type Event = Tables<'events'>;
 type Registration = Tables<'registrations'>;
 
 const Dashboard: React.FC = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isStudent } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -78,11 +78,11 @@ const Dashboard: React.FC = () => {
     },
   });
 
-  // Fetch user's registrations
+  // Fetch user's registrations (only for students)
   const { data: registrations = [] } = useQuery({
     queryKey: ['registrations', user?.id],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user || !isStudent()) return [];
       
       const { data, error } = await supabase
         .from('registrations')
@@ -92,7 +92,7 @@ const Dashboard: React.FC = () => {
       if (error) throw error;
       return data as Registration[];
     },
-    enabled: !!user,
+    enabled: !!user && isStudent(),
   });
 
   // Fetch user's organized events (only for admins)
@@ -145,12 +145,13 @@ const Dashboard: React.FC = () => {
     enabled: !!user && isAdmin() && approvedAdminEvents.length > 0,
   });
 
-  // Register for event mutation
+  // Register for event mutation (only for students)
   const registerMutation = useMutation({
     mutationFn: async (eventId: string) => {
       if (!user) throw new Error('User not authenticated');
+      if (!isStudent()) throw new Error('Only students can register for events');
 
-      // ERROR FIX: Fetch user profile data for required fields
+      // Fetch user profile data for required fields
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('full_name, email, phone, student_id')
@@ -164,7 +165,7 @@ const Dashboard: React.FC = () => {
       // Get student_id as roll_number
       const roll_number = profile.student_id || "";
 
-      // Insert with all required fields, maintain other fields as null/undefined if not available
+      // Insert with all required fields
       const { error } = await supabase.from('registrations').insert({
         event_id: eventId,
         user_id: user.id,
@@ -257,13 +258,15 @@ const Dashboard: React.FC = () => {
   // Get unique categories for filter
   const categories = Array.from(new Set(events.map(event => event.category).filter(Boolean)));
 
-  // Check if user is registered for an event
+  // Check if user is registered for an event (only for students)
   const isRegistered = (eventId: string) => {
+    if (!isStudent()) return false;
     return registrations.some(reg => reg.event_id === eventId);
   };
 
-  // Get user's registered events
+  // Get user's registered events (only for students)
   const getRegisteredEvents = () => {
+    if (!isStudent()) return [];
     return events.filter(event => 
       registrations.some(reg => reg.event_id === event.id)
     );
@@ -344,59 +347,65 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Dashboard Tabs */}
-        <Tabs defaultValue="registered" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className={"w-full " + (showAdminTabs ? "grid grid-cols-3" : "grid grid-cols-1")}>
-            <TabsTrigger value="registered">My Registrations</TabsTrigger>
+        <Tabs defaultValue={isStudent() ? "registered" : "organized"} value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className={`w-full ${
+            showAdminTabs && approvedAdminEvents.length > 0 
+              ? "grid grid-cols-3" 
+              : showAdminTabs 
+                ? "grid grid-cols-2" 
+                : "grid grid-cols-1"
+          }`}>
+            {isStudent() && <TabsTrigger value="registered">My Registrations</TabsTrigger>}
             {showAdminTabs && <TabsTrigger value="organized">My Events</TabsTrigger>}
-            {showAdminTabs && (
+            {showAdminTabs && approvedAdminEvents.length > 0 && (
               <TabsTrigger value="participants" className="relative">
                 Manage Participants
-                {approvedAdminEvents.length > 0 && (
-                  <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 text-xs">
-                    {approvedAdminEvents.length}
-                  </Badge>
-                )}
+                <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 text-xs">
+                  {approvedAdminEvents.length}
+                </Badge>
               </TabsTrigger>
             )}
           </TabsList>
           
-          {/* My Registrations Tab (Always visible) */}
-          <TabsContent value="registered" className="mt-6">
-            <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
-              <div className="p-6 border-b">
-                <h2 className="text-lg font-semibold">My Registered Events</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  View all events you have registered for.
-                </p>
-              </div>
-              
-              {registrations.length > 0 ? (
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {getRegisteredEvents().map((event) => (
-                      <Link to={`/events/${event.id}`} key={event.id}>
-                        <EventCard
-                          event={event}
-                          isRegistered={true}
-                          showRegisterButton={false}
-                        />
-                      </Link>
-                    ))}
+          {/* My Registrations Tab (Only for students) */}
+          {isStudent() && (
+            <TabsContent value="registered" className="mt-6">
+              <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
+                <div className="p-6 border-b">
+                  <h2 className="text-lg font-semibold">My Registered Events</h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    View all events you have registered for.
+                  </p>
+                </div>
+                
+                {registrations.length > 0 ? (
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {getRegisteredEvents().map((event) => (
+                        <Link to={`/events/${event.id}`} key={event.id}>
+                          <EventCard
+                            event={event}
+                            isRegistered={true}
+                            showRegisterButton={false}
+                          />
+                        </Link>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="p-6 text-center">
-                  <p className="text-gray-500 mb-4">You haven't registered for any events yet.</p>
-                  <Button asChild>
-                    <Link to="/events">Browse Events</Link>
-                  </Button>
-                </div>
-              )}
-            </div>
-          </TabsContent>
+                ) : (
+                  <div className="p-6 text-center">
+                    <p className="text-gray-500 mb-4">You haven't registered for any events yet.</p>
+                    <Button asChild>
+                      <Link to="/events">Browse Events</Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
 
           {/* My Events Tab (Organized Events) - only admins */}
-          {showAdminTabs &&
+          {showAdminTabs && (
             <TabsContent value="organized" className="mt-6">
               <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
                 <div className="p-6 border-b">
@@ -510,10 +519,10 @@ const Dashboard: React.FC = () => {
                 )}
               </div>
             </TabsContent>
-          }
+          )}
 
           {/* Participants Tab (Participant management) - only for approved events by current admin */}
-          {showAdminTabs &&
+          {showAdminTabs && approvedAdminEvents.length > 0 && (
             <TabsContent value="participants" className="mt-6">
               <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
                 <div className="p-6 border-b">
@@ -524,165 +533,150 @@ const Dashboard: React.FC = () => {
                         Approve or reject participants for your approved events.
                       </p>
                     </div>
-                    {approvedAdminEvents.length > 0 && (
-                      <Badge variant="outline">
-                        {approvedAdminEvents.length} Approved Event{approvedAdminEvents.length !== 1 ? 's' : ''}
-                      </Badge>
-                    )}
+                    <Badge variant="outline">
+                      {approvedAdminEvents.length} Approved Event{approvedAdminEvents.length !== 1 ? 's' : ''}
+                    </Badge>
                   </div>
                 </div>
                 
-                {approvedAdminEvents.length > 0 ? (
-                  <div>
-                    {approvedAdminEvents.map((event) => {
-                      const eventRegs = eventRegistrations[event.id] || [];
-                      const pendingCount = eventRegs.filter(r => r.status === 'pending').length;
-                      const approvedCount = eventRegs.filter(r => r.status === 'approved').length;
-                      
-                      return (
-                        <div key={event.id} className="border-b last:border-b-0">
-                          <div className="p-4 bg-gray-50 dark:bg-gray-900 flex justify-between items-center">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <h3 className="font-medium text-lg">{event.title}</h3>
-                                <div className="flex gap-2">
-                                  {pendingCount > 0 && (
-                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                                      {pendingCount} Pending
-                                    </Badge>
-                                  )}
-                                  <Badge variant="outline" className="bg-green-50 text-green-700">
-                                    {approvedCount} Approved
+                <div>
+                  {approvedAdminEvents.map((event) => {
+                    const eventRegs = eventRegistrations[event.id] || [];
+                    const pendingCount = eventRegs.filter(r => r.status === 'pending').length;
+                    const approvedCount = eventRegs.filter(r => r.status === 'approved').length;
+                    
+                    return (
+                      <div key={event.id} className="border-b last:border-b-0">
+                        <div className="p-4 bg-gray-50 dark:bg-gray-900 flex justify-between items-center">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="font-medium text-lg">{event.title}</h3>
+                              <div className="flex gap-2">
+                                {pendingCount > 0 && (
+                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                    {pendingCount} Pending
                                   </Badge>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-4 text-sm text-gray-500">
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  <span>{format(parseISO(event.event_date), 'PPP')}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Users className="h-3 w-3" />
-                                  <span>Max: {event.max_participants || 'Unlimited'}</span>
-                                </div>
+                                )}
+                                <Badge variant="outline" className="bg-green-50 text-green-700">
+                                  {approvedCount} Approved
+                                </Badge>
                               </div>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="flex items-center gap-2"
-                              onClick={() => downloadParticipantsList(event.id, event.title)}
-                              disabled={approvedCount === 0}
-                            >
-                              <Download className="h-3 w-3" />
-                              Export ({approvedCount})
-                            </Button>
+                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{format(parseISO(event.event_date), 'PPP')}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                <span>Max: {event.max_participants || 'Unlimited'}</span>
+                              </div>
+                            </div>
                           </div>
-                          
-                          {eventRegs.length > 0 ? (
-                            <div className="overflow-x-auto">
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Phone</TableHead>
-                                    <TableHead>Roll Number</TableHead>
-                                    <TableHead>Registration Date</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {eventRegs.map((reg) => (
-                                    <TableRow key={reg.id}>
-                                      <TableCell className="font-medium">
-                                        {reg.full_name || 'N/A'}
-                                      </TableCell>
-                                      <TableCell>{reg.email || 'N/A'}</TableCell>
-                                      <TableCell>{reg.phone || 'N/A'}</TableCell>
-                                      <TableCell>{reg.roll_number || 'N/A'}</TableCell>
-                                      <TableCell>{format(parseISO(reg.registration_date), 'PPP')}</TableCell>
-                                      <TableCell>
-                                        <Badge className={
-                                          reg.status === 'approved' ? 'bg-green-500' : 
-                                          reg.status === 'pending' ? 'bg-yellow-500' :
-                                          'bg-red-500'
-                                        }>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex items-center gap-2"
+                            onClick={() => downloadParticipantsList(event.id, event.title)}
+                            disabled={approvedCount === 0}
+                          >
+                            <Download className="h-3 w-3" />
+                            Export ({approvedCount})
+                          </Button>
+                        </div>
+                        
+                        {eventRegs.length > 0 ? (
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Name</TableHead>
+                                  <TableHead>Email</TableHead>
+                                  <TableHead>Phone</TableHead>
+                                  <TableHead>Roll Number</TableHead>
+                                  <TableHead>Registration Date</TableHead>
+                                  <TableHead>Status</TableHead>
+                                  <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {eventRegs.map((reg) => (
+                                  <TableRow key={reg.id}>
+                                    <TableCell className="font-medium">
+                                      {reg.full_name || 'N/A'}
+                                    </TableCell>
+                                    <TableCell>{reg.email || 'N/A'}</TableCell>
+                                    <TableCell>{reg.phone || 'N/A'}</TableCell>
+                                    <TableCell>{reg.roll_number || 'N/A'}</TableCell>
+                                    <TableCell>{format(parseISO(reg.registration_date), 'PPP')}</TableCell>
+                                    <TableCell>
+                                      <Badge className={
+                                        reg.status === 'approved' ? 'bg-green-500' : 
+                                        reg.status === 'pending' ? 'bg-yellow-500' :
+                                        'bg-red-500'
+                                      }>
+                                        {reg.status}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      {reg.status === 'pending' && (
+                                        <div className="flex justify-end gap-2">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
+                                            onClick={() => updateRegistrationMutation.mutate({
+                                              id: reg.id,
+                                              status: 'approved'
+                                            })}
+                                            title="Approve"
+                                          >
+                                            <CheckCircle className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                                            onClick={() => updateRegistrationMutation.mutate({
+                                              id: reg.id,
+                                              status: 'rejected'
+                                            })}
+                                            title="Reject"
+                                          >
+                                            <XCircle className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      )}
+                                      {reg.status !== 'pending' && (
+                                        <Badge variant="outline" className="ml-2">
+                                          {reg.status === 'approved' ? (
+                                            <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
+                                          ) : (
+                                            <XCircle className="h-3 w-3 text-red-500 mr-1" />
+                                          )}
                                           {reg.status}
                                         </Badge>
-                                      </TableCell>
-                                      <TableCell className="text-right">
-                                        {reg.status === 'pending' && (
-                                          <div className="flex justify-end gap-2">
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
-                                              onClick={() => updateRegistrationMutation.mutate({
-                                                id: reg.id,
-                                                status: 'approved'
-                                              })}
-                                              title="Approve"
-                                            >
-                                              <CheckCircle className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
-                                              onClick={() => updateRegistrationMutation.mutate({
-                                                id: reg.id,
-                                                status: 'rejected'
-                                              })}
-                                              title="Reject"
-                                            >
-                                              <XCircle className="h-4 w-4" />
-                                            </Button>
-                                          </div>
-                                        )}
-                                        {reg.status !== 'pending' && (
-                                          <Badge variant="outline" className="ml-2">
-                                            {reg.status === 'approved' ? (
-                                              <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
-                                            ) : (
-                                              <XCircle className="h-3 w-3 text-red-500 mr-1" />
-                                            )}
-                                            {reg.status}
-                                          </Badge>
-                                        )}
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </div>
-                          ) : (
-                            <div className="p-8 text-center text-gray-500">
-                              <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                              <p className="text-lg font-medium mb-2">No registrations yet</p>
-                              <p className="text-sm">Participants will appear here once they register for your event.</p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="p-8 text-center">
-                    <Users className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                    <p className="text-lg font-medium text-gray-500 mb-2">No approved events yet</p>
-                    <p className="text-sm text-gray-400 mb-4">
-                      Once your events are approved by executives, you'll be able to manage participants here.
-                    </p>
-                    <Button asChild>
-                      <Link to="/create-event">Create an Event</Link>
-                    </Button>
-                  </div>
-                )}
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        ) : (
+                          <div className="p-8 text-center text-gray-500">
+                            <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                            <p className="text-lg font-medium mb-2">No registrations yet</p>
+                            <p className="text-sm">Participants will appear here once they register for your event.</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </TabsContent>
-          }
+          )}
         </Tabs>
 
         {/* Browse Events */}
@@ -740,9 +734,9 @@ const Dashboard: React.FC = () => {
                     <Link key={event.id} to={`/events/${event.id}`}>
                       <EventCard
                         event={event}
-                        onRegister={(eventId) => registerMutation.mutate(eventId)}
+                        onRegister={isStudent() ? (eventId) => registerMutation.mutate(eventId) : undefined}
                         isRegistered={isRegistered(event.id)}
-                        showRegisterButton={!!user}
+                        showRegisterButton={isStudent()}
                       />
                     </Link>
                   ))}

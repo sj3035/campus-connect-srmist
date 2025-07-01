@@ -28,7 +28,7 @@ type Registration = Tables<'registrations'>;
 
 const EventDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, isStudent } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [registering, setRegistering] = useState(false);
@@ -54,11 +54,11 @@ const EventDetailsPage = () => {
     enabled: !!id,
   });
 
-  // Fetch user's registration status
+  // Fetch user's registration status (only for students)
   const { data: registration } = useQuery({
     queryKey: ['registration', id, user?.id],
     queryFn: async () => {
-      if (!id || !user) return null;
+      if (!id || !user || !isStudent()) return null;
       
       const { data, error } = await supabase
         .from('registrations')
@@ -71,18 +71,19 @@ const EventDetailsPage = () => {
       
       return data as Registration | null;
     },
-    enabled: !!(id && user),
+    enabled: !!(id && user && isStudent()),
   });
 
-  // Register for event mutation
+  // Register for event mutation (only for students)
   const registerMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('User not authenticated');
+      if (!isStudent()) throw new Error('Only students can register for events');
       if (!id) throw new Error('Event ID is required');
 
       setRegistering(true);
 
-      // ERROR FIX: Fetch user profile for registration required fields
+      // Fetch user profile for registration required fields
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("full_name, email, phone, student_id")
@@ -364,7 +365,7 @@ const EventDetailsPage = () => {
                       </div>
                     ) : (
                       <>
-                        {isRegistrationOpen() && (
+                        {isStudent() && isRegistrationOpen() && (
                           <Button 
                             className="w-full"
                             disabled={!user || registering || 
@@ -392,6 +393,12 @@ const EventDetailsPage = () => {
                             Please sign in to register for this event
                           </p>
                         )}
+                        
+                        {user && !isStudent() && (
+                          <p className="text-sm text-center text-muted-foreground mt-2">
+                            Only students can register for events
+                          </p>
+                        )}
                       </>
                     )}
                   </div>
@@ -399,12 +406,14 @@ const EventDetailsPage = () => {
               </div>
             </div>
             {/* Registration Form Modal */}
-            <Dialog open={showRegistrationForm} onOpenChange={setShowRegistrationForm}>
-              <DialogContent className="max-w-md">
-                <h2 className="font-semibold text-lg mb-4">Register for this Event</h2>
-                <EventRegistrationForm eventId={event.id} />
-              </DialogContent>
-            </Dialog>
+            {isStudent() && (
+              <Dialog open={showRegistrationForm} onOpenChange={setShowRegistrationForm}>
+                <DialogContent className="max-w-md">
+                  <h2 className="font-semibold text-lg mb-4">Register for this Event</h2>
+                  <EventRegistrationForm eventId={event.id} />
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         ) : (
           <div className="text-center py-16">
