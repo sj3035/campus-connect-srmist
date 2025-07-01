@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import EventCard from '@/components/EventCard';
+import ParticipantDashboard from '@/components/ParticipantDashboard';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -277,41 +277,6 @@ const Dashboard: React.FC = () => {
     return format(parseISO(dateString), "MMM d, yyyy");
   };
 
-  // Download participants list as CSV
-  const downloadParticipantsList = (eventId: string, eventTitle: string) => {
-    const registrationsList = eventRegistrations[eventId] || [];
-    const approvedRegistrations = registrationsList.filter(r => r.status === 'approved');
-    
-    if (approvedRegistrations.length === 0) {
-      toast({
-        title: "No Participants",
-        description: "There are no approved participants for this event.",
-      });
-      return;
-    }
-    
-    let csvContent = "Name,Email,Registration Date,Status\n";
-    
-    approvedRegistrations.forEach(reg => {
-      const profile = reg.profiles;
-      const name = profile?.full_name || 'N/A';
-      const email = profile?.email || 'N/A';
-      const date = format(parseISO(reg.registration_date), "yyyy-MM-dd");
-      
-      csvContent += `"${name}","${email}","${date}","${reg.status}"\n`;
-    });
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${eventTitle.replace(/\s+/g, '_')}_participants.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header />
@@ -521,159 +486,35 @@ const Dashboard: React.FC = () => {
             </TabsContent>
           )}
 
-          {/* Participants Tab (Participant management) - only for approved events by current admin */}
+          {/* Enhanced Participants Tab with ParticipantDashboard */}
           {showAdminTabs && approvedAdminEvents.length > 0 && (
             <TabsContent value="participants" className="mt-6">
-              <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
-                <div className="p-6 border-b">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold">Manage Event Participants</h2>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Approve or reject participants for your approved events.
-                      </p>
-                    </div>
-                    <Badge variant="outline">
-                      {approvedAdminEvents.length} Approved Event{approvedAdminEvents.length !== 1 ? 's' : ''}
-                    </Badge>
-                  </div>
-                </div>
-                
-                <div>
-                  {approvedAdminEvents.map((event) => {
-                    const eventRegs = eventRegistrations[event.id] || [];
-                    const pendingCount = eventRegs.filter(r => r.status === 'pending').length;
-                    const approvedCount = eventRegs.filter(r => r.status === 'approved').length;
-                    
-                    return (
-                      <div key={event.id} className="border-b last:border-b-0">
-                        <div className="p-4 bg-gray-50 dark:bg-gray-900 flex justify-between items-center">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="font-medium text-lg">{event.title}</h3>
-                              <div className="flex gap-2">
-                                {pendingCount > 0 && (
-                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                                    {pendingCount} Pending
-                                  </Badge>
-                                )}
-                                <Badge variant="outline" className="bg-green-50 text-green-700">
-                                  {approvedCount} Approved
-                                </Badge>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4 text-sm text-gray-500">
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                <span>{format(parseISO(event.event_date), 'PPP')}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                <span>Max: {event.max_participants || 'Unlimited'}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex items-center gap-2"
-                            onClick={() => downloadParticipantsList(event.id, event.title)}
-                            disabled={approvedCount === 0}
-                          >
-                            <Download className="h-3 w-3" />
-                            Export ({approvedCount})
-                          </Button>
-                        </div>
-                        
-                        {eventRegs.length > 0 ? (
-                          <div className="overflow-x-auto">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Name</TableHead>
-                                  <TableHead>Email</TableHead>
-                                  <TableHead>Phone</TableHead>
-                                  <TableHead>Roll Number</TableHead>
-                                  <TableHead>Registration Date</TableHead>
-                                  <TableHead>Status</TableHead>
-                                  <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {eventRegs.map((reg) => (
-                                  <TableRow key={reg.id}>
-                                    <TableCell className="font-medium">
-                                      {reg.full_name || 'N/A'}
-                                    </TableCell>
-                                    <TableCell>{reg.email || 'N/A'}</TableCell>
-                                    <TableCell>{reg.phone || 'N/A'}</TableCell>
-                                    <TableCell>{reg.roll_number || 'N/A'}</TableCell>
-                                    <TableCell>{format(parseISO(reg.registration_date), 'PPP')}</TableCell>
-                                    <TableCell>
-                                      <Badge className={
-                                        reg.status === 'approved' ? 'bg-green-500' : 
-                                        reg.status === 'pending' ? 'bg-yellow-500' :
-                                        'bg-red-500'
-                                      }>
-                                        {reg.status}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      {reg.status === 'pending' && (
-                                        <div className="flex justify-end gap-2">
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
-                                            onClick={() => updateRegistrationMutation.mutate({
-                                              id: reg.id,
-                                              status: 'approved'
-                                            })}
-                                            title="Approve"
-                                          >
-                                            <CheckCircle className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
-                                            onClick={() => updateRegistrationMutation.mutate({
-                                              id: reg.id,
-                                              status: 'rejected'
-                                            })}
-                                            title="Reject"
-                                          >
-                                            <XCircle className="h-4 w-4" />
-                                          </Button>
-                                        </div>
-                                      )}
-                                      {reg.status !== 'pending' && (
-                                        <Badge variant="outline" className="ml-2">
-                                          {reg.status === 'approved' ? (
-                                            <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
-                                          ) : (
-                                            <XCircle className="h-3 w-3 text-red-500 mr-1" />
-                                          )}
-                                          {reg.status}
-                                        </Badge>
-                                      )}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        ) : (
-                          <div className="p-8 text-center text-gray-500">
-                            <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                            <p className="text-lg font-medium mb-2">No registrations yet</p>
-                            <p className="text-sm">Participants will appear here once they register for your event.</p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+              <div className="space-y-6">
+                {approvedAdminEvents.map((event) => {
+                  const eventRegs = eventRegistrations[event.id] || [];
+                  const participantData = eventRegs.map(reg => ({
+                    id: reg.id,
+                    full_name: reg.full_name,
+                    email: reg.email,
+                    phone: reg.phone,
+                    roll_number: reg.roll_number,
+                    status: reg.status,
+                    registration_date: reg.registration_date,
+                    approved_at: reg.approved_at,
+                    approved_by: reg.approved_by,
+                  }));
+
+                  return (
+                    <ParticipantDashboard
+                      key={event.id}
+                      event={event}
+                      participants={participantData}
+                      onUpdateStatus={(registrationId, status) => 
+                        updateRegistrationMutation.mutate({ id: registrationId, status })
+                      }
+                    />
+                  );
+                })}
               </div>
             </TabsContent>
           )}
