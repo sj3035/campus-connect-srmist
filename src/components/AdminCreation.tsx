@@ -8,10 +8,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { UserPlus } from 'lucide-react';
 
 const AdminCreation = () => {
-  const { createAdminAccount, isAdmin } = useAuth();
+  const { createAdminAccount, isExecutive } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
-  if (!isAdmin()) {
+  // Only show for executives, not regular admins
+  if (!isExecutive()) {
     return null;
   }
 

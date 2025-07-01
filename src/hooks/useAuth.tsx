@@ -189,10 +189,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
+  // Regular admins can create events but cannot create other admin accounts
   const isAdmin = () => {
-    return profile?.role === 'admin' || profile?.role === 'executive';
+    return profile?.role === 'admin';
   };
 
+  // Executives can approve events and create admin accounts
   const isExecutive = () => {
     return profile?.role === 'executive';
   };

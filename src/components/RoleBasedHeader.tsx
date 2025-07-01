@@ -62,8 +62,8 @@ const RoleBasedHeader = () => {
               </Link>
             )}
             
-            {/* Admins can create events (but not executives - they only approve) */}
-            {isAdmin() && !isExecutive() && (
+            {/* Only regular admins can create events */}
+            {isAdmin() && (
               <Link to="/create-event">
                 <Button variant="ghost">
                   <Plus className="h-4 w-4 mr-2" />
@@ -82,8 +82,8 @@ const RoleBasedHeader = () => {
               </Link>
             )}
             
-            {/* Admins get admin panel (but not pure executives) */}
-            {isAdmin() && !isExecutive() && (
+            {/* Only regular admins get admin panel (not executives) */}
+            {isAdmin() && (
               <Link to="/admin">
                 <Button variant="ghost">
                   <Settings className="h-4 w-4 mr-2" />
