@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,7 +27,8 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Calendar
+  Calendar,
+  Users
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -111,18 +113,16 @@ const Dashboard: React.FC = () => {
     enabled: !!user && isAdmin(),
   });
 
-  // Fetch event registrations only for approved events created by the current admin
+  // Get approved events created by current admin for participant management
+  const approvedAdminEvents = organizedEvents.filter(event => event.status === 'approved');
+
+  // Fetch event registrations for approved events created by the current admin
   const { data: eventRegistrations = {} } = useQuery({
     queryKey: ['event-registrations', user?.id],
     queryFn: async () => {
-      if (!user || !isAdmin()) return {};
+      if (!user || !isAdmin() || approvedAdminEvents.length === 0) return {};
       
-      // Get only approved events organized by the current admin
-      const approvedEventIds = organizedEvents
-        .filter(event => event.status === 'approved')
-        .map(event => event.id);
-      
-      if (approvedEventIds.length === 0) return {};
+      const approvedEventIds = approvedAdminEvents.map(event => event.id);
       
       const { data, error } = await supabase
         .from('registrations')
@@ -142,7 +142,7 @@ const Dashboard: React.FC = () => {
       
       return grouped;
     },
-    enabled: !!user && isAdmin() && organizedEvents.length > 0,
+    enabled: !!user && isAdmin() && approvedAdminEvents.length > 0,
   });
 
   // Register for event mutation
@@ -325,12 +325,20 @@ const Dashboard: React.FC = () => {
             </div>
             
             {showAdminTabs && (
-              <Button asChild className="btn-hover">
-                <Link to="/create-event">
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Create New Event
-                </Link>
-              </Button>
+              <div className="flex gap-2">
+                <Button asChild className="btn-hover">
+                  <Link to="/create-event">
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Create New Event
+                  </Link>
+                </Button>
+                {approvedAdminEvents.length > 0 && (
+                  <Badge variant="outline" className="px-3 py-1">
+                    <Users className="h-3 w-3 mr-1" />
+                    {approvedAdminEvents.length} Approved Event{approvedAdminEvents.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -340,7 +348,16 @@ const Dashboard: React.FC = () => {
           <TabsList className={"w-full " + (showAdminTabs ? "grid grid-cols-3" : "grid grid-cols-1")}>
             <TabsTrigger value="registered">My Registrations</TabsTrigger>
             {showAdminTabs && <TabsTrigger value="organized">My Events</TabsTrigger>}
-            {showAdminTabs && <TabsTrigger value="participants">Participants</TabsTrigger>}
+            {showAdminTabs && (
+              <TabsTrigger value="participants" className="relative">
+                Manage Participants
+                {approvedAdminEvents.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 text-xs">
+                    {approvedAdminEvents.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            )}
           </TabsList>
           
           {/* My Registrations Tab (Always visible) */}
@@ -397,61 +414,89 @@ const Dashboard: React.FC = () => {
                           <TableHead>Event Name</TableHead>
                           <TableHead>Date</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Participants</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {organizedEvents.map((event) => (
-                          <TableRow key={event.id}>
-                            <TableCell className="font-medium truncate max-w-[200px]">
-                              {event.title}
-                            </TableCell>
-                            <TableCell>{formatDate(event.event_date)}</TableCell>
-                            <TableCell>
-                              <Badge className={
-                                event.status === 'approved' ? 'bg-green-500' : 
-                                event.status === 'pending_approval' ? 'bg-yellow-500' :
-                                'bg-red-500'
-                              }>
-                                {event.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    Actions
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-40">
-                                  <DropdownMenuItem asChild>
-                                    <Link to={`/events/${event.id}`} className="w-full cursor-pointer">
-                                      View
-                                    </Link>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem asChild>
-                                    <Link to={`/edit-event/${event.id}`} className="w-full cursor-pointer">
-                                      <Edit className="mr-2 h-4 w-4" />
-                                      Edit
-                                    </Link>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    className="text-red-600 focus:text-red-600" 
-                                    onClick={() => {
-                                      if (window.confirm('Are you sure you want to delete this event?')) {
-                                        deleteEventMutation.mutate(event.id);
-                                      }
-                                    }}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {organizedEvents.map((event) => {
+                          const eventRegs = eventRegistrations[event.id] || [];
+                          const approvedCount = eventRegs.filter(r => r.status === 'approved').length;
+                          
+                          return (
+                            <TableRow key={event.id}>
+                              <TableCell className="font-medium truncate max-w-[200px]">
+                                {event.title}
+                              </TableCell>
+                              <TableCell>{formatDate(event.event_date)}</TableCell>
+                              <TableCell>
+                                <Badge className={
+                                  event.status === 'approved' ? 'bg-green-500' : 
+                                  event.status === 'pending_approval' ? 'bg-yellow-500' :
+                                  'bg-red-500'
+                                }>
+                                  {event.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {event.status === 'approved' ? (
+                                  <div className="flex items-center gap-2">
+                                    <Users className="h-4 w-4 text-gray-500" />
+                                    <span>{approvedCount}/{event.max_participants || '∞'}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm">
+                                      Actions
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem asChild>
+                                      <Link to={`/events/${event.id}`} className="w-full cursor-pointer">
+                                        View Event
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                      <Link to={`/edit-event/${event.id}`} className="w-full cursor-pointer">
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Edit Event
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    {event.status === 'approved' && (
+                                      <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem 
+                                          onClick={() => setActiveTab('participants')}
+                                          className="cursor-pointer"
+                                        >
+                                          <Users className="mr-2 h-4 w-4" />
+                                          Manage Participants
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      className="text-red-600 focus:text-red-600" 
+                                      onClick={() => {
+                                        if (window.confirm('Are you sure you want to delete this event?')) {
+                                          deleteEventMutation.mutate(event.id);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -472,124 +517,164 @@ const Dashboard: React.FC = () => {
             <TabsContent value="participants" className="mt-6">
               <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
                 <div className="p-6 border-b">
-                  <h2 className="text-lg font-semibold">Event Participants</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Manage participants for your approved events.
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold">Manage Event Participants</h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Approve or reject participants for your approved events.
+                      </p>
+                    </div>
+                    {approvedAdminEvents.length > 0 && (
+                      <Badge variant="outline">
+                        {approvedAdminEvents.length} Approved Event{approvedAdminEvents.length !== 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 
-                {/* Only show approved events created by the current admin */}
-                {organizedEvents.filter(event => event.status === 'approved').length > 0 ? (
+                {approvedAdminEvents.length > 0 ? (
                   <div>
-                    {organizedEvents
-                      .filter(event => event.status === 'approved')
-                      .map((event) => {
-                        const eventRegs = eventRegistrations[event.id] || [];
-                        return (
-                          <div key={event.id} className="border-b last:border-b-0">
-                            <div className="p-4 bg-gray-50 dark:bg-gray-900 flex justify-between items-center">
-                              <div>
-                                <h3 className="font-medium">{event.title}</h3>
-                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                    {approvedAdminEvents.map((event) => {
+                      const eventRegs = eventRegistrations[event.id] || [];
+                      const pendingCount = eventRegs.filter(r => r.status === 'pending').length;
+                      const approvedCount = eventRegs.filter(r => r.status === 'approved').length;
+                      
+                      return (
+                        <div key={event.id} className="border-b last:border-b-0">
+                          <div className="p-4 bg-gray-50 dark:bg-gray-900 flex justify-between items-center">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h3 className="font-medium text-lg">{event.title}</h3>
+                                <div className="flex gap-2">
+                                  {pendingCount > 0 && (
+                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                      {pendingCount} Pending
+                                    </Badge>
+                                  )}
+                                  <Badge variant="outline" className="bg-green-50 text-green-700">
+                                    {approvedCount} Approved
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-gray-500">
+                                <div className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
                                   <span>{format(parseISO(event.event_date), 'PPP')}</span>
                                 </div>
+                                <div className="flex items-center gap-1">
+                                  <Users className="h-3 w-3" />
+                                  <span>Max: {event.max_participants || 'Unlimited'}</span>
+                                </div>
                               </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="flex items-center"
-                                onClick={() => downloadParticipantsList(event.id, event.title)}
-                              >
-                                <Download className="h-3 w-3 mr-1" />
-                                <span>Export</span>
-                              </Button>
                             </div>
-                            
-                            {eventRegs.length > 0 ? (
-                              <div className="overflow-x-auto">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead>Name</TableHead>
-                                      <TableHead>Email</TableHead>
-                                      <TableHead>Registration Date</TableHead>
-                                      <TableHead>Status</TableHead>
-                                      <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {eventRegs.map((reg) => (
-                                      <TableRow key={reg.id}>
-                                        <TableCell className="font-medium">
-                                          {reg.profiles?.full_name || 'N/A'}
-                                        </TableCell>
-                                        <TableCell>{reg.profiles?.email || 'N/A'}</TableCell>
-                                        <TableCell>{format(parseISO(reg.registration_date), 'PPP')}</TableCell>
-                                        <TableCell>
-                                          <Badge className={
-                                            reg.status === 'approved' ? 'bg-green-500' : 
-                                            reg.status === 'pending' ? 'bg-yellow-500' :
-                                            'bg-red-500'
-                                          }>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex items-center gap-2"
+                              onClick={() => downloadParticipantsList(event.id, event.title)}
+                              disabled={approvedCount === 0}
+                            >
+                              <Download className="h-3 w-3" />
+                              Export ({approvedCount})
+                            </Button>
+                          </div>
+                          
+                          {eventRegs.length > 0 ? (
+                            <div className="overflow-x-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead>Phone</TableHead>
+                                    <TableHead>Roll Number</TableHead>
+                                    <TableHead>Registration Date</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {eventRegs.map((reg) => (
+                                    <TableRow key={reg.id}>
+                                      <TableCell className="font-medium">
+                                        {reg.full_name || 'N/A'}
+                                      </TableCell>
+                                      <TableCell>{reg.email || 'N/A'}</TableCell>
+                                      <TableCell>{reg.phone || 'N/A'}</TableCell>
+                                      <TableCell>{reg.roll_number || 'N/A'}</TableCell>
+                                      <TableCell>{format(parseISO(reg.registration_date), 'PPP')}</TableCell>
+                                      <TableCell>
+                                        <Badge className={
+                                          reg.status === 'approved' ? 'bg-green-500' : 
+                                          reg.status === 'pending' ? 'bg-yellow-500' :
+                                          'bg-red-500'
+                                        }>
+                                          {reg.status}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {reg.status === 'pending' && (
+                                          <div className="flex justify-end gap-2">
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
+                                              onClick={() => updateRegistrationMutation.mutate({
+                                                id: reg.id,
+                                                status: 'approved'
+                                              })}
+                                              title="Approve"
+                                            >
+                                              <CheckCircle className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                                              onClick={() => updateRegistrationMutation.mutate({
+                                                id: reg.id,
+                                                status: 'rejected'
+                                              })}
+                                              title="Reject"
+                                            >
+                                              <XCircle className="h-4 w-4" />
+                                            </Button>
+                                          </div>
+                                        )}
+                                        {reg.status !== 'pending' && (
+                                          <Badge variant="outline" className="ml-2">
+                                            {reg.status === 'approved' ? (
+                                              <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
+                                            ) : (
+                                              <XCircle className="h-3 w-3 text-red-500 mr-1" />
+                                            )}
                                             {reg.status}
                                           </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                          {reg.status === 'pending' && (
-                                            <div className="flex justify-end gap-2">
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-8 w-8 p-0 text-green-600"
-                                                onClick={() => updateRegistrationMutation.mutate({
-                                                  id: reg.id,
-                                                  status: 'approved'
-                                                })}
-                                              >
-                                                <CheckCircle className="h-4 w-4" />
-                                              </Button>
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-8 w-8 p-0 text-red-600"
-                                                onClick={() => updateRegistrationMutation.mutate({
-                                                  id: reg.id,
-                                                  status: 'rejected'
-                                                })}
-                                              >
-                                                <XCircle className="h-4 w-4" />
-                                              </Button>
-                                            </div>
-                                          )}
-                                          {reg.status !== 'pending' && (
-                                            <Badge variant="outline" className="ml-2">
-                                              {reg.status === 'approved' ? (
-                                                <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
-                                              ) : (
-                                                <XCircle className="h-3 w-3 text-red-500 mr-1" />
-                                              )}
-                                              {reg.status}
-                                            </Badge>
-                                          )}
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            ) : (
-                              <div className="p-4 text-center text-gray-500">
-                                No registrations for this event yet
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                                        )}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          ) : (
+                            <div className="p-8 text-center text-gray-500">
+                              <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                              <p className="text-lg font-medium mb-2">No registrations yet</p>
+                              <p className="text-sm">Participants will appear here once they register for your event.</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="p-6 text-center">
-                    <p className="text-gray-500 mb-4">You don't have any approved events yet.</p>
+                  <div className="p-8 text-center">
+                    <Users className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                    <p className="text-lg font-medium text-gray-500 mb-2">No approved events yet</p>
+                    <p className="text-sm text-gray-400 mb-4">
+                      Once your events are approved by executives, you'll be able to manage participants here.
+                    </p>
                     <Button asChild>
                       <Link to="/create-event">Create an Event</Link>
                     </Button>
