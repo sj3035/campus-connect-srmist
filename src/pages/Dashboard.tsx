@@ -312,22 +312,21 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Dashboard Tabs */}
-        <Tabs defaultValue={isStudent() ? "registered" : "organized"} value={activeTab} onValueChange={setActiveTab}>
+        <Tabs defaultValue={isStudent() ? "registered" : "participants"} value={activeTab} onValueChange={setActiveTab}>
           <TabsList className={`w-full ${
-            showAdminTabs && approvedAdminEvents.length > 0 
-              ? "grid grid-cols-3" 
-              : showAdminTabs 
-                ? "grid grid-cols-2" 
-                : "grid grid-cols-1"
+            showAdminTabs 
+              ? "grid grid-cols-2" 
+              : "grid grid-cols-1"
           }`}>
             {isStudent() && <TabsTrigger value="registered">My Registrations</TabsTrigger>}
-            {showAdminTabs && <TabsTrigger value="organized">My Events</TabsTrigger>}
-            {showAdminTabs && approvedAdminEvents.length > 0 && (
+            {showAdminTabs && (
               <TabsTrigger value="participants" className="relative">
                 Manage Participants
-                <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 text-xs">
-                  {approvedAdminEvents.length}
-                </Badge>
+                {approvedAdminEvents.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 text-xs">
+                    {approvedAdminEvents.length}
+                  </Badge>
+                )}
               </TabsTrigger>
             )}
           </TabsList>
@@ -369,153 +368,57 @@ const Dashboard: React.FC = () => {
             </TabsContent>
           )}
 
-          {/* My Events Tab (Organized Events) - only admins */}
+          {/* Manage Participants Tab - Always visible for admins */}
           {showAdminTabs && (
-            <TabsContent value="organized" className="mt-6">
-              <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
-                <div className="p-6 border-b">
-                  <h2 className="text-lg font-semibold">My Organized Events</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Manage events that you've created.
-                  </p>
+            <TabsContent value="participants" className="mt-6">
+              {approvedAdminEvents.length > 0 ? (
+                <div className="space-y-6">
+                  {approvedAdminEvents.map((event) => {
+                    const eventRegs = eventRegistrations[event.id] || [];
+                    const participantData = eventRegs.map(reg => ({
+                      id: reg.id,
+                      full_name: reg.full_name,
+                      email: reg.email,
+                      phone: reg.phone,
+                      roll_number: reg.roll_number,
+                      status: reg.status,
+                      registration_date: reg.registration_date,
+                      approved_at: reg.approved_at,
+                      approved_by: reg.approved_by,
+                    }));
+
+                    return (
+                      <ParticipantDashboard
+                        key={event.id}
+                        event={event}
+                        participants={participantData}
+                        onUpdateStatus={(registrationId, status) => 
+                          updateRegistrationMutation.mutate({ id: registrationId, status })
+                        }
+                      />
+                    );
+                  })}
                 </div>
-                
-                {organizedEvents.length > 0 ? (
-                  <div className="px-4 py-6">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Event Name</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Participants</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {organizedEvents.map((event) => {
-                          const eventRegs = eventRegistrations[event.id] || [];
-                          const approvedCount = eventRegs.filter(r => r.status === 'approved').length;
-                          
-                          return (
-                            <TableRow key={event.id}>
-                              <TableCell className="font-medium truncate max-w-[200px]">
-                                {event.title}
-                              </TableCell>
-                              <TableCell>{formatDate(event.event_date)}</TableCell>
-                              <TableCell>
-                                <Badge className={
-                                  event.status === 'approved' ? 'bg-green-500' : 
-                                  event.status === 'pending_approval' ? 'bg-yellow-500' :
-                                  'bg-red-500'
-                                }>
-                                  {event.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {event.status === 'approved' ? (
-                                  <div className="flex items-center gap-2">
-                                    <Users className="h-4 w-4 text-gray-500" />
-                                    <span>{approvedCount}/{event.max_participants || '∞'}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm">
-                                      Actions
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-48">
-                                    <DropdownMenuItem asChild>
-                                      <Link to={`/events/${event.id}`} className="w-full cursor-pointer">
-                                        View Event
-                                      </Link>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem asChild>
-                                      <Link to={`/edit-event/${event.id}`} className="w-full cursor-pointer">
-                                        <Edit className="mr-2 h-4 w-4" />
-                                        Edit Event
-                                      </Link>
-                                    </DropdownMenuItem>
-                                    {event.status === 'approved' && (
-                                      <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem 
-                                          onClick={() => setActiveTab('participants')}
-                                          className="cursor-pointer"
-                                        >
-                                          <Users className="mr-2 h-4 w-4" />
-                                          Manage Participants
-                                        </DropdownMenuItem>
-                                      </>
-                                    )}
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
-                                      className="text-red-600 focus:text-red-600" 
-                                      onClick={() => {
-                                        if (window.confirm('Are you sure you want to delete this event?')) {
-                                          deleteEventMutation.mutate(event.id);
-                                        }
-                                      }}
-                                    >
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+              ) : (
+                <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
+                  <div className="p-6 border-b">
+                    <h2 className="text-lg font-semibold">Manage Participants</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Manage participants for your approved events.
+                    </p>
                   </div>
-                ) : (
                   <div className="p-6 text-center">
-                    <p className="text-gray-500 mb-4">You haven't created any events yet.</p>
+                    <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p className="text-gray-500 mb-4">No approved events yet.</p>
+                    <p className="text-sm text-gray-400 mb-6">
+                      Create an event and wait for approval to start managing participants.
+                    </p>
                     <Button asChild>
                       <Link to="/create-event">Create an Event</Link>
                     </Button>
                   </div>
-                )}
-              </div>
-            </TabsContent>
-          )}
-
-          {/* Enhanced Participants Tab with ParticipantDashboard */}
-          {showAdminTabs && approvedAdminEvents.length > 0 && (
-            <TabsContent value="participants" className="mt-6">
-              <div className="space-y-6">
-                {approvedAdminEvents.map((event) => {
-                  const eventRegs = eventRegistrations[event.id] || [];
-                  const participantData = eventRegs.map(reg => ({
-                    id: reg.id,
-                    full_name: reg.full_name,
-                    email: reg.email,
-                    phone: reg.phone,
-                    roll_number: reg.roll_number,
-                    status: reg.status,
-                    registration_date: reg.registration_date,
-                    approved_at: reg.approved_at,
-                    approved_by: reg.approved_by,
-                  }));
-
-                  return (
-                    <ParticipantDashboard
-                      key={event.id}
-                      event={event}
-                      participants={participantData}
-                      onUpdateStatus={(registrationId, status) => 
-                        updateRegistrationMutation.mutate({ id: registrationId, status })
-                      }
-                    />
-                  );
-                })}
-              </div>
+                </div>
+              )}
             </TabsContent>
           )}
         </Tabs>
