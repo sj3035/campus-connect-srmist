@@ -188,6 +188,61 @@ const AdminPanel = () => {
     }
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, eventId: string) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    for (const file of Array.from(files)) {
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${eventId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        
+        // Upload file to Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from('events')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('events')
+          .getPublicUrl(fileName);
+
+        // Save to event_media table
+        const { error: dbError } = await supabase
+          .from('event_media')
+          .insert({
+            event_id: eventId,
+            file_url: publicUrl,
+            file_type: file.type.startsWith('image/') ? 'image' : 
+                      file.type.startsWith('video/') ? 'video' : 'document',
+            uploaded_by: user?.id,
+            caption: file.name
+          });
+
+        if (dbError) throw dbError;
+
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        toast({
+          title: "Upload Failed",
+          description: `Failed to upload ${file.name}`,
+          variant: "destructive",
+        });
+      }
+    }
+
+    toast({
+      title: "Upload Successful",
+      description: "Media files have been uploaded successfully",
+    });
+    fetchMedia();
+    
+    // Clear the input
+    event.target.value = '';
+  };
+
   const handleDeleteMedia = async (mediaId: string) => {
     if (!confirm('Are you sure you want to delete this media file?')) return;
 
@@ -452,46 +507,109 @@ const AdminPanel = () => {
 
         <TabsContent value="media" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold">Media Files</h2>
-            <Button>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Media
-            </Button>
+            <h2 className="text-2xl font-semibold">Event Media Management</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {media.map((item) => (
-              <Card key={item.id}>
-                <CardContent className="p-4">
-                  <div className="aspect-video bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
-                    {item.file_type === 'image' ? (
-                      <Image className="h-8 w-8 text-gray-400" />
-                    ) : (
-                      <Video className="h-8 w-8 text-gray-400" />
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline">{item.file_type}</Badge>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDeleteMedia(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+          {/* Only show media management for completed events */}
+          {events.filter(event => event.status === 'completed').length > 0 ? (
+            <div className="space-y-6">
+              {events.filter(event => event.status === 'completed').map((event) => {
+                const eventMedia = media.filter(item => item.event_id === event.id);
+                
+                return (
+                  <Card key={event.id} className="p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold">{event.title}</h3>
+                        <p className="text-sm text-gray-500">
+                          Event Date: {format(new Date(event.event_date), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="file"
+                          id={`file-upload-${event.id}`}
+                          multiple
+                          accept="image/*,video/*,.pdf,.doc,.docx"
+                          onChange={(e) => handleFileUpload(e, event.id)}
+                          className="hidden"
+                        />
+                        <Button
+                          onClick={() => document.getElementById(`file-upload-${event.id}`)?.click()}
+                          size="sm"
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload Media
+                        </Button>
+                      </div>
                     </div>
-                    {item.caption && (
-                      <p className="text-sm text-gray-600">{item.caption}</p>
+
+                    {eventMedia.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {eventMedia.map((item) => (
+                          <Card key={item.id}>
+                            <CardContent className="p-4">
+                              <div className="aspect-video bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
+                                {item.file_type === 'image' ? (
+                                  item.file_url ? (
+                                    <img 
+                                      src={item.file_url} 
+                                      alt={item.caption || 'Event media'}
+                                      className="w-full h-full object-cover rounded-lg"
+                                    />
+                                  ) : (
+                                    <Image className="h-8 w-8 text-gray-400" />
+                                  )
+                                ) : (
+                                  <Video className="h-8 w-8 text-gray-400" />
+                                )}
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <Badge variant="outline">{item.file_type}</Badge>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleDeleteMedia(item.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                {item.caption && (
+                                  <p className="text-sm text-gray-600">{item.caption}</p>
+                                )}
+                                <p className="text-xs text-gray-500">
+                                  {format(new Date(item.created_at!), 'MMM d, yyyy')}
+                                </p>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <Upload className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                        <p>No media uploaded for this event yet.</p>
+                        <p className="text-sm">Upload images, videos, or documents to share with participants.</p>
+                      </div>
                     )}
-                    <p className="text-xs text-gray-500">
-                      {format(new Date(item.created_at!), 'MMM d, yyyy')}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-500 mb-4">No completed events yet.</p>
+                  <p className="text-sm text-gray-400">
+                    Media can only be uploaded for events that have been completed.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="participants" className="space-y-4">

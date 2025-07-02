@@ -14,7 +14,11 @@ import {
   Users,
   Share2,
   ArrowLeft,
-  Tag
+  Tag,
+  Image,
+  Video,
+  FileText,
+  Download
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
@@ -25,6 +29,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 type Event = Tables<'events'>;
 type Registration = Tables<'registrations'>;
+type EventMedia = Tables<'event_media'>;
 
 const EventDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -72,6 +77,25 @@ const EventDetailsPage = () => {
       return data as Registration | null;
     },
     enabled: !!(id && user && isStudent()),
+  });
+
+  // Fetch event media
+  const { data: eventMedia = [] } = useQuery({
+    queryKey: ['event-media', id],
+    queryFn: async () => {
+      if (!id) return [];
+      
+      const { data, error } = await supabase
+        .from('event_media')
+        .select('*')
+        .eq('event_id', id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      return data as EventMedia[];
+    },
+    enabled: !!id,
   });
 
   // Register for event mutation (only for students)
@@ -335,6 +359,55 @@ const EventDetailsPage = () => {
                     Share Event
                   </Button>
                 </div>
+
+                {/* Event Media Section */}
+                {eventMedia.length > 0 && (
+                  <div className="bg-white dark:bg-gray-950 rounded-xl p-6 shadow-sm">
+                    <h2 className="text-lg font-semibold mb-4">Event Media & Resources</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {eventMedia.map((media) => (
+                        <div key={media.id} className="border rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                              {media.file_type === 'image' ? (
+                                <Image className="h-8 w-8 text-blue-500" />
+                              ) : media.file_type === 'video' ? (
+                                <Video className="h-8 w-8 text-red-500" />
+                              ) : (
+                                <FileText className="h-8 w-8 text-gray-500" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-sm truncate">
+                                {media.caption || 'Event Media'}
+                              </h3>
+                              <p className="text-xs text-gray-500 capitalize">
+                                {media.file_type}
+                              </p>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => window.open(media.file_url, '_blank')}
+                            >
+                              <Download className="h-3 w-3 mr-1" />
+                              View
+                            </Button>
+                          </div>
+                          {media.file_type === 'image' && media.file_url && (
+                            <div className="mt-3">
+                              <img 
+                                src={media.file_url} 
+                                alt={media.caption || 'Event image'}
+                                className="w-full h-32 object-cover rounded-md"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               
               {/* Right column - Registration */}
