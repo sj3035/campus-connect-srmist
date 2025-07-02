@@ -15,6 +15,8 @@ import { toast } from '@/hooks/use-toast';
 import { Tables, Enums } from '@/integrations/supabase/types';
 import { format } from 'date-fns';
 import AdminCreation from './AdminCreation';
+import ParticipantDashboard from './ParticipantDashboard';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 type Event = Tables<'events'>;
 type EventMedia = Tables<'event_media'>;
@@ -22,12 +24,89 @@ type EventStatus = Enums<'event_status'>;
 
 const AdminPanel = () => {
   const { user, isAdmin, isExecutive } = useAuth();
+  const queryClient = useQueryClient();
   const [events, setEvents] = useState<Event[]>([]);
   const [media, setMedia] = useState<EventMedia[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [rejectingEvent, setRejectingEvent] = useState<Event | null>(null);
   const [declineReason, setDeclineReason] = useState('');
+
+  // Fetch user's organized events for participant management
+  const { data: organizedEvents = [] } = useQuery({
+    queryKey: ['organized-events', user?.id],
+    queryFn: async () => {
+      if (!user || (!isAdmin() && !isExecutive())) return [];
+      
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('organizer_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as Event[];
+    },
+    enabled: !!user && (isAdmin() || isExecutive()),
+  });
+
+  // Get approved events for participant management
+  const approvedAdminEvents = organizedEvents.filter(event => event.status === 'approved');
+
+  // Fetch event registrations for approved events
+  const { data: eventRegistrations = {} } = useQuery({
+    queryKey: ['event-registrations', user?.id],
+    queryFn: async () => {
+      if (!user || (!isAdmin() && !isExecutive()) || approvedAdminEvents.length === 0) return {};
+      
+      const approvedEventIds = approvedAdminEvents.map(event => event.id);
+      
+      const { data, error } = await supabase
+        .from('registrations')
+        .select('*, profiles:user_id(*)')
+        .in('event_id', approvedEventIds);
+      
+      if (error) throw error;
+      
+      // Group registrations by event_id
+      const grouped = (data as any[]).reduce((acc, registration) => {
+        if (!acc[registration.event_id]) {
+          acc[registration.event_id] = [];
+        }
+        acc[registration.event_id].push(registration);
+        return acc;
+      }, {} as Record<string, any[]>);
+      
+      return grouped;
+    },
+    enabled: !!user && (isAdmin() || isExecutive()) && approvedAdminEvents.length > 0,
+  });
+
+  // Update registration status mutation
+  const updateRegistrationMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: 'approved' | 'rejected' }) => {
+      const { error } = await supabase
+        .from('registrations')
+        .update({ status, approved_by: user?.id, approved_at: new Date().toISOString() })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['event-registrations'] });
+      toast({
+        title: "Registration Updated",
+        description: "The registration status has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update registration status.",
+        variant: "destructive",
+      });
+    },
+  });
 
   useEffect(() => {
     if (isAdmin() || isExecutive()) {
@@ -219,7 +298,7 @@ const AdminPanel = () => {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="events">Events Management</TabsTrigger>
           <TabsTrigger value="media">Media Management</TabsTrigger>
-          <TabsTrigger value="admins">Admin Management</TabsTrigger>
+          <TabsTrigger value="participants">Participant Management</TabsTrigger>
         </TabsList>
 
         <TabsContent value="events" className="space-y-4">
@@ -415,34 +494,55 @@ const AdminPanel = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="admins" className="space-y-4">
+        <TabsContent value="participants" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold">Admin Management</h2>
+            <h2 className="text-2xl font-semibold">Participant Management</h2>
           </div>
 
-          <div className="grid gap-6">
-            <AdminCreation />
-            
+          {approvedAdminEvents.length > 0 ? (
+            <div className="space-y-6">
+              {approvedAdminEvents.map((event) => {
+                const eventRegs = eventRegistrations[event.id] || [];
+                const participantData = eventRegs.map(reg => ({
+                  id: reg.id,
+                  full_name: reg.full_name,
+                  email: reg.email,
+                  phone: reg.phone,
+                  roll_number: reg.roll_number,
+                  status: reg.status,
+                  registration_date: reg.registration_date,
+                  approved_at: reg.approved_at,
+                  approved_by: reg.approved_by,
+                }));
+
+                return (
+                  <ParticipantDashboard
+                    key={event.id}
+                    event={event}
+                    participants={participantData}
+                    onUpdateStatus={(registrationId, status) => 
+                      updateRegistrationMutation.mutate({ id: registrationId, status })
+                    }
+                  />
+                );
+              })}
+            </div>
+          ) : (
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Admin Account Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-sm text-gray-600 space-y-2">
-                  <p><strong>Admin Domain Requirements:</strong></p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>@srmist.edu.in</li>
-                    <li>@ist.srmtrichy.edu.in</li>
-                  </ul>
-                  <p><strong>Default Password:</strong> SRMIST@2024</p>
-                  <p><strong>Password Change:</strong> New admins should use the "Forgot Password" feature to set their own password.</p>
+              <CardContent className="p-6">
+                <div className="text-center">
+                  <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-500 mb-4">No approved events yet.</p>
+                  <p className="text-sm text-gray-400 mb-6">
+                    Create an event and wait for approval to start managing participants.
+                  </p>
+                  <Button onClick={() => window.location.href = '/create-event'}>
+                    Create an Event
+                  </Button>
                 </div>
               </CardContent>
             </Card>
-          </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
