@@ -1,73 +1,76 @@
-# Welcome to your Lovable project
+# 🎓 Campus Connect - SRMIST
 
-## Project info
+Welcome to **Campus Connect**, your smart student assistant tailored for SRM Institute of Science and Technology (SRMIST). This platform bridges the gap between campus life and digital convenience—empowering students with real-time updates, streamlined resources, and a unified interface.
 
-**URL**: https://lovable.dev/projects/38a60af3-ec9b-4e8c-8292-28ce050f72b1
+🌐 **Live URL**: [https://campus-connect-srmist.vercel.app](https://campus-connect-srmist.vercel.app)
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## 📌 Project Description
 
-**Use Lovable**
+**Campus Connect** is a centralized web application designed to enhance the day-to-day experience of SRMIST students. With this platform, students can effortlessly stay informed, access resources, manage events, and communicate within the university ecosystem.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/38a60af3-ec9b-4e8c-8292-28ce050f72b1) and start prompting.
+The primary objective of the project is to create a **digital hub for SRMIST**, where students can:
+- Stay updated with campus announcements.
+- Explore clubs and events.
+- Access department contacts.
+- Receive notifications for academic and extracurricular activities.
 
-Changes made via Lovable will be committed automatically to this repo.
+Built with a modern tech stack (React + Tailwind + TypeScript + shadcn/ui), it ensures **performance**, **scalability**, and a **responsive UI** across devices.
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## ✨ Features
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Here are some of the key features offered by Campus Connect:
 
-Follow these steps:
+### 📰 Campus Feed
+- Real-time updates on university announcements, events, and notices.
+- Categorized posts for academics, events, placements, and more.
+
+### 🎉 Events & Clubs
+- Browse upcoming events across various departments and student-run clubs.
+- Discover and connect with active student organizations.
+
+### 👥 Department Directory
+- Quick access to faculty contacts, departments, and office information.
+- Structured view of departments and point-of-contacts.
+
+### 📆 Personalized Dashboard (Planned)
+- Upcoming feature to provide a customized student dashboard with academic calendar, personal reminders, and deadlines.
+
+### 🔔 Notifications
+- Instant alerts for new announcements, events, and more (Planned push notification support).
+
+### 💻 Modern UI/UX
+- Built using Tailwind CSS and shadcn/ui for a polished, consistent interface.
+- Fully responsive across desktop, tablet, and mobile devices.
+
+---
+
+## 🛠 Tech Stack
+
+This project uses:
+
+- ⚡ **Vite** – Lightning-fast build tool
+- ⚛️ **React** – Frontend framework
+- 🟦 **TypeScript** – Static typing for JavaScript
+- 🎨 **Tailwind CSS** – Utility-first styling
+- 🧩 **shadcn/ui** – Accessible, pre-styled UI components
+
+---
+
+### 💻 Edit Locally via Terminal
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# 1. Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# 2. Navigate into the project
+cd campus-connect-srmist
 
-# Step 3: Install the necessary dependencies.
-npm i
+# 3. Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 4. Run the development server
 npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/38a60af3-ec9b-4e8c-8292-28ce050f72b1) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
