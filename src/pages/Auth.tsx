@@ -11,7 +11,7 @@ import { FaGoogle } from 'react-icons/fa';
 import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
 
 const Auth = () => {
-  const { user, signIn, signUp } = useAuth();
+  const { user, signIn, signUp, signInWithGoogle } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -50,6 +50,17 @@ const Auth = () => {
     const role = isAdminDomain(email) ? 'admin' : 'student';
     await signUp(email, password, fullName, role);
     setIsLoading(false);
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -151,16 +162,38 @@ const Auth = () => {
                   type="button" 
                   variant="outline" 
                   className="w-full"
-                  onClick={() => {
-                    alert('Google sign-in would be implemented here.');
-                  }}
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
                 >
                   <FaGoogle className="mr-2 h-4 w-4" />
-                  Google
+                  {isLoading ? 'Signing in...' : 'Continue with Google'}
                 </Button>
               </TabsContent>
               
               <TabsContent value="signup" className="animate-fade-in">
+                <div className="space-y-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={handleGoogleSignIn}
+                    disabled={isLoading}
+                  >
+                    <FaGoogle className="mr-2 h-4 w-4" />
+                    {isLoading ? 'Signing up...' : 'Sign up with Google'}
+                  </Button>
+                  
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-gray-300 dark:border-gray-700" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white dark:bg-gray-950 px-2 text-gray-500 dark:text-gray-400">
+                        Or continue with email
+                      </span>
+                    </div>
+                  </div>
+                </div>
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="signup-name">Full Name</Label>
